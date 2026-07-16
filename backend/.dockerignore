@@ -1,0 +1,9 @@
+__pycache__
+.venv
+.pytest_cache
+.uv
+*.log
+.env
+.git
+uvicorn.log
+worker.log

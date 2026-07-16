@@ -1,0 +1,59 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: cloudguard_db
+    restart: always
+    environment:
+      POSTGRES_USER: cloudguard
+      POSTGRES_PASSWORD: cloudguard_password
+      POSTGRES_DB: cloudguard
+    ports:
+      - "5440:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  backend:
+    build: ./backend
+    container_name: cloudguard_backend
+    restart: always
+    environment:
+      - DATABASE_URL=postgresql://cloudguard:cloudguard_password@db:5432/cloudguard
+      - SECRET_KEY=9a6c98c61e4444585c5b5f545a5d5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a
+      - ENCRYPTION_KEY=BrmyzfsNvudn92JC3DNI_EUzDz7yRwzXooyzvZonmbM=
+      - DEMO_MODE=true
+      - SKYLAB_SERVER_IP=127.0.0.1
+      - SKYLAB_SERVER_USER=admin
+      - SKYLAB_SERVER_PASS=change-me-for-real-demo
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+
+  worker:
+    build: ./backend
+    container_name: cloudguard_worker
+    restart: always
+    environment:
+      - DATABASE_URL=postgresql://cloudguard:cloudguard_password@db:5432/cloudguard
+      - SECRET_KEY=9a6c98c61e4444585c5b5f545a5d5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a
+      - ENCRYPTION_KEY=BrmyzfsNvudn92JC3DNI_EUzDz7yRwzXooyzvZonmbM=
+      - DEMO_MODE=true
+      - SKYLAB_SERVER_IP=127.0.0.1
+      - SKYLAB_SERVER_USER=admin
+      - SKYLAB_SERVER_PASS=change-me-for-real-demo
+    command: ["uv", "run", "python", "-u", "app/worker.py"]
+    depends_on:
+      - db
+
+  frontend:
+    build: ./frontend
+    container_name: cloudguard_frontend
+    restart: always
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+
