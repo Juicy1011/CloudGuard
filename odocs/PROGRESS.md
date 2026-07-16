@@ -38,6 +38,7 @@ CloudGuard is a unified, SSH-based cloud monitoring and management system design
 ### Phase 5: Verification & Production Ready
 - [x] Conduct end-to-end local integration testing
 - [x] Run linting, formating, and type checking across frontend and backend
-- [x] Implement configurable "Demo Mode" for reliable school/presentation staging
+- [x] Implement configurable \"Demo Mode\" for reliable school/presentation staging
 - [x] Add externalized mock data for custom microservices visualization
+- [x] Improve microservices health visualization with status-aware styling and icons
 
