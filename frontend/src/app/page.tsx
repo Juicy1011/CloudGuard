@@ -5,7 +5,7 @@ import Sidebar from "@/components/Sidebar";
 import StatusCard from "@/components/StatusCard";
 import MicroservicesList from "@/components/MicroservicesList";
 import { fetchServers, fetchServerDetail } from "@/lib/api";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, AlertCircle } from "lucide-react";
 
 export default function Dashboard() {
   const [servers, setServers] = useState<any[]>([]);
@@ -37,6 +37,8 @@ export default function Dashboard() {
     return () => clearInterval(interval);
   }, [selectedServer?.id]);
 
+  const isUnreachable = selectedServer && selectedServer.last_status !== "online";
+
   return (
     <div className="flex h-screen bg-slate-950 text-slate-100">
       <Sidebar />
@@ -50,12 +52,23 @@ export default function Dashboard() {
               <ChevronLeft size={20} /> Back to Overview
             </button>
             
-            <header className="mb-8">
+            <header className="mb-6">
               <h1 className="text-3xl font-bold tracking-tight">{selectedServer.name}</h1>
               <p className="text-slate-500 text-sm font-medium uppercase tracking-widest">Secured Infrastructure Node</p>
             </header>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {isUnreachable && (
+              <div className="mb-8 flex items-center gap-3 p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-400">
+                <AlertCircle size={20} className="shrink-0" />
+                <div>
+                  <p className="font-bold text-sm uppercase tracking-tight">Infrastructure Connection Lost</p>
+                  <p className="text-xs text-amber-400/70">Displaying last known metrics from the edge database. Telemetry will resume automatically upon reconnection.</p>
+                </div>
+              </div>
+            )}
+
+
+            <div className={`grid grid-cols-1 lg:grid-cols-3 gap-6 transition-all duration-500 ${isUnreachable ? 'opacity-50 grayscale contrast-75' : ''}`}>
               <StatusCard 
                 id={selectedServer.id}
                 name={selectedServer.name}
