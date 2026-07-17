@@ -40,7 +40,8 @@ async def monitor_servers():
                     private_key=private_key,
                     port=server.port,
                     server_name=server.name,
-                    status_override=server.status_override
+                    status_override=server.status_override,
+                    stopped_containers=server.stopped_containers
                 )
                 
                 metrics = parse_all_metrics(raw_metrics)

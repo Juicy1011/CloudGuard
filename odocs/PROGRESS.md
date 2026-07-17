@@ -41,4 +41,5 @@ CloudGuard is a unified, SSH-based cloud monitoring and management system design
 - [x] Implement configurable \"Demo Mode\" for reliable school/presentation staging
 - [x] Add externalized mock data for custom microservices visualization
 - [x] Improve microservices health visualization with status-aware styling and icons
+- [x] Implement remote container lifecycle management (Stop/Start/Restart) with state-aware action buttons
 

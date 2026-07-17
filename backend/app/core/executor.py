@@ -6,7 +6,7 @@ import random
 from app.core.security import settings
 from app.core.mock_data import MOCK_MICROSERVICES
 
-def get_mock_metrics(hostname: str, server_name: str = None, status_override: str = None) -> dict:
+def get_mock_metrics(hostname: str, server_name: str = None, status_override: str = None, stopped_containers: list = None) -> dict:
     if status_override == "ssh_fail" or (server_name and "[SSH_FAIL]" in server_name):
         return {"success": False, "error": "SSH Dial Timeouts: connection handshake failed."}
 
@@ -20,8 +20,14 @@ def get_mock_metrics(hostname: str, server_name: str = None, status_override: st
     docker_ps_lines = []
     docker_stats_lines = []
     
+    stopped_set = set(stopped_containers or [])
+    
     for i, m in enumerate(selected_services):
-        if (status_override == "crash" or (server_name and "[CRASH]" in server_name)) and i == 0:
+        if m['id'] in stopped_set:
+            status = "Exited (0) 5 minutes ago"
+            cpu = "0.00%"
+            mem = "0.00%"
+        elif (status_override == "crash" or (server_name and "[CRASH]" in server_name)) and i == 0:
             status = "Exited (1) 2 minutes ago"
             cpu = "0.00%"
             mem = "0.00%"
@@ -56,10 +62,11 @@ def execute_ssh_commands(
     port: int = 22,
     timeout: float = 10.0,
     server_name: str = None,
-    status_override: str = None
+    status_override: str = None,
+    stopped_containers: list = None
 ) -> dict:
     if settings.DEMO_MODE == "true":
-        return get_mock_metrics(hostname, server_name, status_override)
+        return get_mock_metrics(hostname, server_name, status_override, stopped_containers)
 
     client = paramiko.SSHClient()
 

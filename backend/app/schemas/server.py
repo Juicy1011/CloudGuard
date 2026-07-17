@@ -17,6 +17,7 @@ class ServerView(ServerBase):
     is_active: bool
     last_status: str
     status_override: Optional[str] = None
+    stopped_containers: Optional[List[str]] = []
     last_seen: Optional[datetime] = None
 
     class Config:
@@ -24,6 +25,9 @@ class ServerView(ServerBase):
 
 class ChaosTrigger(BaseModel):
     override: Optional[str] = None
+
+class ContainerAction(BaseModel):
+    action: str = Field(..., description="Action to perform: stop, start, restart")
 
 
 class ContainerView(BaseModel):

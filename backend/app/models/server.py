@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Text
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Text, JSON
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
@@ -16,6 +16,7 @@ class Server(Base):
     is_active = Column(Boolean, default=True)
     last_status = Column(String, default="unknown")
     status_override = Column(String, nullable=True)
+    stopped_containers = Column(JSON, default=list)
     last_seen = Column(DateTime(timezone=True), onupdate=func.now())
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 

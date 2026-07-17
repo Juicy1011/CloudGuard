@@ -23,3 +23,18 @@ export async function triggerChaos(serverId: number, override: string | null) {
   if (!response.ok) throw new Error("Failed to set chaos override");
   return response.json();
 }
+
+export async function manageContainer(serverId: number, containerId: string, action: "stop" | "start" | "restart") {
+  const response = await fetch(`${API_BASE_URL}/servers/${serverId}/containers/${containerId}/action`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ action }),
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || `Failed to ${action} container`);
+  }
+  return response.json();
+}

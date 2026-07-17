@@ -80,7 +80,12 @@ export default function Dashboard() {
               />
               
               <div className="lg:col-span-2">
-                <MicroservicesList containers={selectedServer.containers} />
+                <MicroservicesList 
+                  serverId={selectedServer.id}
+                  serverStatus={selectedServer.last_status}
+                  containers={selectedServer.containers} 
+                  onActionComplete={loadData}
+                />
               </div>
             </div>
           </div>

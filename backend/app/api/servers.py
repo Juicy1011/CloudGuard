@@ -4,8 +4,10 @@ from typing import List
 from app.database import get_db
 from app.models.server import Server
 from app.models.health import HealthLog, ContainerLog
-from app.schemas.server import ServerCreate, ServerView, ServerDetail, HealthLogView, ContainerView, ChaosTrigger
-from app.core.security import encrypt_credential
+from app.schemas.server import ServerCreate, ServerView, ServerDetail, HealthLogView, ContainerView, ChaosTrigger, ContainerAction
+from app.core.security import encrypt_credential, decrypt_credential, settings
+import io
+import paramiko
 
 router = APIRouter()
 
@@ -76,6 +78,7 @@ def get_server_detail(server_id: int, db: Session = Depends(get_db)):
         is_active=server.is_active,
         last_status=server.last_status,
         status_override=server.status_override,
+        stopped_containers=server.stopped_containers,
         last_seen=server.last_seen,
         latest_health=h_view,
         containers=c_views
@@ -95,6 +98,84 @@ def trigger_chaos(server_id: int, trigger: ChaosTrigger, db: Session = Depends(g
     db.commit()
     db.refresh(server)
     return server
+
+@router.post("/{server_id}/containers/{container_id}/action")
+def manage_container(server_id: int, container_id: str, payload: ContainerAction, db: Session = Depends(get_db)):
+    server = db.query(Server).filter(Server.id == server_id).first()
+    if not server:
+        raise HTTPException(status_code=404, detail="Server not found")
+        
+    action = payload.action.lower()
+    if action not in ("stop", "start", "restart"):
+        raise HTTPException(status_code=400, detail="Invalid action. Must be 'stop', 'start', or 'restart'")
+
+    action_past = "stopped" if action == "stop" else ("started" if action == "start" else "restarted")
+
+    if settings.DEMO_MODE == "true":
+        stopped = list(server.stopped_containers or [])
+        if action == "stop":
+            if container_id not in stopped:
+                stopped.append(container_id)
+        elif action == "start":
+            if container_id in stopped:
+                stopped.remove(container_id)
+        elif action == "restart":
+            if container_id in stopped:
+                stopped.remove(container_id)
+        
+        server.stopped_containers = stopped
+        db.commit()
+        db.refresh(server)
+        return {"message": f"Demo: Container {container_id} {action_past} successfully."}
+        
+    else:
+        password = decrypt_credential(server.password) if server.password else None
+        private_key = decrypt_credential(server.private_key) if server.private_key else None
+        
+        client = paramiko.SSHClient()
+        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        pkey = None
+        if private_key:
+            try:
+                pkey = paramiko.RSAKey.from_private_key(io.StringIO(private_key))
+            except Exception:
+                try:
+                    pkey = paramiko.Ed25519Key.from_private_key(io.StringIO(private_key))
+                except Exception:
+                    pass
+                    
+        try:
+            client.connect(
+                hostname=server.hostname,
+                port=server.port,
+                username=server.username,
+                password=password,
+                pkey=pkey,
+                timeout=10.0
+            )
+            cmd = f"docker {action} {container_id}"
+            stdin, stdout, stderr = client.exec_command(cmd, timeout=10.0)
+            exit_status = stdout.channel.recv_exit_status()
+            
+            if exit_status != 0:
+                err_msg = stderr.read().decode("utf-8", errors="ignore").strip()
+                raise HTTPException(status_code=500, detail=f"Docker command failed: {err_msg}")
+                
+            stopped = list(server.stopped_containers or [])
+            if action == "stop" and container_id not in stopped:
+                stopped.append(container_id)
+            elif action in ("start", "restart") and container_id in stopped:
+                stopped.remove(container_id)
+                
+            server.stopped_containers = stopped
+            db.commit()
+            
+            return {"message": f"Container {container_id} {action_past} successfully."}
+            
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"SSH connection/execution failed: {str(e)}")
+        finally:
+            client.close()
 
 @router.delete("/{server_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_server(server_id: int, db: Session = Depends(get_db)):
