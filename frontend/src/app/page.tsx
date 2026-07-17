@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import Sidebar from "@/components/Sidebar";
 import StatusCard from "@/components/StatusCard";
 import MicroservicesList from "@/components/MicroservicesList";
-import { fetchServers, fetchServerDetail, triggerChaos } from "@/lib/api";
+import { fetchServers, fetchServerDetail } from "@/lib/api";
 import { ChevronLeft } from "lucide-react";
 
 export default function Dashboard() {
@@ -55,55 +55,16 @@ export default function Dashboard() {
               <p className="text-slate-500 text-sm font-medium uppercase tracking-widest">Secured Infrastructure Node</p>
             </header>
 
-
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="space-y-6">
-                <StatusCard 
-                  id={selectedServer.id}
-                  name={selectedServer.name}
-                  hostname={selectedServer.hostname}
-                  status={selectedServer.last_status}
-                  cpu={selectedServer.latest_health?.cpu_percent || 0}
-                  ram={selectedServer.latest_health?.memory_percent || 0}
-                  latency={selectedServer.latest_health?.latency || 0}
-                />
-
-                <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
-                  <h3 className="font-semibold text-lg mb-2 text-slate-200">Chaos Control Center</h3>
-                  <p className="text-xs text-slate-500 mb-6">
-                    Simulate real-time cloud failures and evaluate agentless auto-discovery reactions.
-                  </p>
-                  
-                  <div className="grid grid-cols-2 gap-3">
-                    {[
-                      { label: "Healthy", value: null, color: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20" },
-                      { label: "Offline-Ping", value: "offline", color: "bg-rose-500/10 text-rose-400 border-rose-500/20 hover:bg-rose-500/20" },
-                      { label: "SSH Failure", value: "ssh_fail", color: "bg-amber-500/10 text-amber-400 border-amber-500/20 hover:bg-amber-500/20" },
-                      { label: "Crashed Svc", value: "crash", color: "bg-purple-500/10 text-purple-400 border-purple-500/20 hover:bg-purple-500/20" }
-                    ].map((opt) => (
-                      <button
-                        key={opt.label}
-                        onClick={async () => {
-                          try {
-                            const updated = await triggerChaos(selectedServer.id, opt.value);
-                            setSelectedServer((prev: any) => ({ ...prev, status_override: updated.status_override }));
-                            await loadData();
-                          } catch (err) {
-                            console.error(err);
-                          }
-                        }}
-                        className={`flex flex-col items-center justify-center p-3 rounded-lg border text-xs font-bold uppercase tracking-tighter transition-all ${
-                          selectedServer.status_override === opt.value
-                            ? "ring-2 ring-blue-500 border-transparent bg-blue-500/20 text-blue-400"
-                            : opt.color
-                        }`}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
+              <StatusCard 
+                id={selectedServer.id}
+                name={selectedServer.name}
+                hostname={selectedServer.hostname}
+                status={selectedServer.last_status}
+                cpu={selectedServer.latest_health?.cpu_percent || 0}
+                ram={selectedServer.latest_health?.memory_percent || 0}
+                latency={selectedServer.latest_health?.latency || 0}
+              />
               
               <div className="lg:col-span-2">
                 <MicroservicesList containers={selectedServer.containers} />
@@ -144,6 +105,3 @@ export default function Dashboard() {
     </div>
   );
 }
-
-
-
