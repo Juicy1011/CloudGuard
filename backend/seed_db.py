@@ -4,21 +4,21 @@ from app.core.security import encrypt_credential, settings
 
 SERVERS_TO_SEED = [
     {
-        "name": "Skylab Production [OFFLINE]",
+        "name": "Skylab Production",
         "hostname": settings.SKYLAB_SERVER_IP,
         "port": 22,
         "username": settings.SKYLAB_SERVER_USER,
         "password": settings.SKYLAB_SERVER_PASS
     },
     {
-        "name": "Skylab Staging [SSH_FAIL]",
+        "name": "Skylab Staging",
         "hostname": "192.168.10.50",
         "port": 22,
         "username": "staging-admin",
         "password": "staging-password"
     },
     {
-        "name": "Helios Database [CRASH]",
+        "name": "Helios Database",
         "hostname": "192.168.10.100",
         "port": 22,
         "username": "db-operator",

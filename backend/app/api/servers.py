@@ -4,7 +4,7 @@ from typing import List
 from app.database import get_db
 from app.models.server import Server
 from app.models.health import HealthLog, ContainerLog
-from app.schemas.server import ServerCreate, ServerView, ServerDetail, HealthLogView, ContainerView
+from app.schemas.server import ServerCreate, ServerView, ServerDetail, HealthLogView, ContainerView, ChaosTrigger
 from app.core.security import encrypt_credential
 
 router = APIRouter()
@@ -75,10 +75,26 @@ def get_server_detail(server_id: int, db: Session = Depends(get_db)):
         username=server.username,
         is_active=server.is_active,
         last_status=server.last_status,
+        status_override=server.status_override,
         last_seen=server.last_seen,
         latest_health=h_view,
         containers=c_views
     )
+
+@router.post("/{server_id}/chaos", response_model=ServerView)
+def trigger_chaos(server_id: int, trigger: ChaosTrigger, db: Session = Depends(get_db)):
+    server = db.query(Server).filter(Server.id == server_id).first()
+    if not server:
+        raise HTTPException(status_code=404, detail="Server not found")
+    
+    valid_overrides = {None, "offline", "ssh_fail", "crash"}
+    if trigger.override not in valid_overrides:
+        raise HTTPException(status_code=400, detail="Invalid override value")
+        
+    server.status_override = trigger.override
+    db.commit()
+    db.refresh(server)
+    return server
 
 @router.delete("/{server_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_server(server_id: int, db: Session = Depends(get_db)):

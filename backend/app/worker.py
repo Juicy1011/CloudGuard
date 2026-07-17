@@ -20,7 +20,7 @@ async def monitor_servers():
             print(f"Checking {len(servers)} servers...")
             for server in servers:
                 print(f"Probing {server.name} ({server.hostname})...")
-                is_alive, latency = await ping_host(server.hostname, server_name=server.name)
+                is_alive, latency = await ping_host(server.hostname, server_name=server.name, status_override=server.status_override)
                 print(f"Ping result: {is_alive}, latency: {latency}")
                 
                 if not is_alive:
@@ -30,8 +30,6 @@ async def monitor_servers():
                     db.commit()
                     continue
 
-                server.last_status = "online"
-                
                 password = decrypt_credential(server.password) if server.password else None
                 private_key = decrypt_credential(server.private_key) if server.private_key else None
                 
@@ -41,12 +39,14 @@ async def monitor_servers():
                     password=password,
                     private_key=private_key,
                     port=server.port,
-                    server_name=server.name
+                    server_name=server.name,
+                    status_override=server.status_override
                 )
                 
                 metrics = parse_all_metrics(raw_metrics)
                 
                 if metrics["success"]:
+                    server.last_status = "online"
                     health = HealthLog(
                         server_id=server.id,
                         cpu_percent=metrics["cpu_percent"],
@@ -77,7 +77,9 @@ async def monitor_servers():
                     
                     server.last_seen = func.now()
                 else:
-                    send_incident_email(server.name, server.hostname, f"SSH Connection Failed: {metrics.get('error')}")
+                    if server.last_status != "ssh_fail":
+                        server.last_status = "ssh_fail"
+                        send_incident_email(server.name, server.hostname, f"SSH Connection Failed: {metrics.get('error')}")
 
                 db.commit()
         except Exception as e:

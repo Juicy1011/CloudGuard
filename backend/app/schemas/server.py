@@ -16,10 +16,15 @@ class ServerView(ServerBase):
     id: int
     is_active: bool
     last_status: str
+    status_override: Optional[str] = None
     last_seen: Optional[datetime] = None
 
     class Config:
         from_attributes = True
+
+class ChaosTrigger(BaseModel):
+    override: Optional[str] = None
+
 
 class ContainerView(BaseModel):
     container_id: str

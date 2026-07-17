@@ -4,7 +4,9 @@ import sys
 import random
 from app.core.security import settings
 
-async def ping_host(ip_address: str, timeout: float = 2.0, server_name: str = None) -> tuple[bool, float]:
+async def ping_host(ip_address: str, timeout: float = 2.0, server_name: str = None, status_override: str = None) -> tuple[bool, float]:
+    if status_override == "offline":
+        return False, 0.0
     if settings.DEMO_MODE == "true":
         if server_name and "[OFFLINE]" in server_name:
             return False, 0.0

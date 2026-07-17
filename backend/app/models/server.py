@@ -15,6 +15,7 @@ class Server(Base):
     private_key = Column(Text, nullable=True)
     is_active = Column(Boolean, default=True)
     last_status = Column(String, default="unknown")
+    status_override = Column(String, nullable=True)
     last_seen = Column(DateTime(timezone=True), onupdate=func.now())
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 

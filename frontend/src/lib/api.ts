@@ -11,3 +11,15 @@ export async function fetchServerDetail(serverId: number) {
   if (!response.ok) throw new Error("Failed to fetch server details");
   return response.json();
 }
+
+export async function triggerChaos(serverId: number, override: string | null) {
+  const response = await fetch(`${API_BASE_URL}/servers/${serverId}/chaos`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ override }),
+  });
+  if (!response.ok) throw new Error("Failed to set chaos override");
+  return response.json();
+}
