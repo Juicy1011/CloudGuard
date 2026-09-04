@@ -53,6 +53,8 @@ jobs:
 >>>>>>> master
 
       - name: Run Backend Unit Tests
+        env:
+          PYTHONPATH: .
         run: |
           cd backend
 <<<<<<< HEAD
