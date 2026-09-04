@@ -30,6 +30,8 @@ jobs:
           uv sync --dev
 
       - name: Run Backend Unit Tests
+        env:
+          PYTHONPATH: .
         run: |
           cd backend
           uv run pytest
