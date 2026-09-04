@@ -17,13 +17,15 @@ interface MicroservicesListProps {
   serverStatus: string;
   containers: Container[];
   onActionComplete?: () => void;
+  theme?: "dark" | "light";
 }
 
-export default function MicroservicesList({ serverId, serverStatus, containers, onActionComplete }: MicroservicesListProps) {
+export default function MicroservicesList({ serverId, serverStatus, containers, onActionComplete, theme = "dark" }: MicroservicesListProps) {
   const [loadingMap, setLoadingMap] = useState<{ [key: string]: string | null }>({});
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const isServerOffline = serverStatus !== "online";
+  const isLight = theme === "light";
 
   const handleAction = async (containerId: string, action: "stop" | "start" | "restart") => {
     setLoadingMap((prev) => ({ ...prev, [containerId]: action }));
