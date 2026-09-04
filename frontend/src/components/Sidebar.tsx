@@ -4,49 +4,65 @@ import React, { useState } from "react";
 import { LayoutDashboard, Shield, Server, Settings, Bell, LogOut, ChevronLeft, ChevronRight, Sun, Moon, User } from "lucide-react";
 
 interface SidebarProps {
-  activeTab: string;
-  onTabChange: (tab: string) => void;
+  activeTab?: string;
+  onTabChange?: (tab: string) => void;
   theme?: "dark" | "light";
   onThemeToggle?: () => void;
   onSignOut?: () => void;
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
-export default function Sidebar({ activeTab, onTabChange, theme = "dark", onThemeToggle, onSignOut }: SidebarProps) {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+export default function Sidebar({
+  activeTab = "dashboard",
+  onTabChange,
+  theme = "dark",
+  onThemeToggle,
+  onSignOut,
+  collapsed,
+  onToggleCollapse
+}: SidebarProps) {
+  const [internalCollapsed, setInternalCollapsed] = useState(false);
+  const isCollapsed = collapsed !== undefined ? collapsed : internalCollapsed;
+  const isLight = theme === "light";
 
   const menuItems = [
-    { icon: LayoutDashboard, label: "Dashboard", id: "dashboard" },
-    { icon: Server, label: "Infrastructure", id: "infrastructure" },
-    { icon: Bell, label: "Incidents", id: "incidents" },
-    { icon: Shield, label: "Access Control", id: "access" },
-    { icon: User, label: "Profile", id: "profile" },
-    { icon: Settings, label: "Settings", id: "settings" },
+    { id: "dashboard", icon: LayoutDashboard, label: "Dashboard" },
+    { id: "infrastructure", icon: Server, label: "Infrastructure" },
+    { id: "incidents", icon: Bell, label: "Incidents" },
+    { id: "access", icon: Shield, label: "Access Control" },
+    { id: "profile", icon: User, label: "Profile" },
+    { id: "settings", icon: Settings, label: "Settings" },
   ];
 
-  const isLight = theme === "light";
+  const handleToggle = () => {
+    if (onToggleCollapse) {
+      onToggleCollapse();
+    } else {
+      setInternalCollapsed(!internalCollapsed);
+    }
+  };
 
   return (
     <aside className={`border-r flex flex-col p-4 transition-all duration-300 ease-in-out ${
       isLight ? "bg-white border-slate-200 text-slate-800" : "bg-slate-950 border-slate-800 text-slate-100"
-    } ${
-      isCollapsed ? "w-20" : "w-64"
-    }`}>
-      <div className="flex items-center justify-between mb-10 px-2">
+    } ${isCollapsed ? "w-20" : "w-64"}`}>
+      <div className="flex items-center justify-between mb-8 px-2">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center font-bold text-lg italic shrink-0 text-white">
+          <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center font-bold text-lg italic text-white shrink-0">
             CG
           </div>
           {!isCollapsed && (
-            <span className="font-bold text-xl tracking-tight">
+            <span className={`font-bold text-xl tracking-tight ${isLight ? "text-slate-900" : "text-slate-100"}`}>
               CloudGuard
             </span>
           )}
         </div>
         <button
-          onClick={() => setIsCollapsed(!isCollapsed)}
+          onClick={handleToggle}
           className={`p-1.5 rounded-lg border transition-colors ${
-            isLight 
-              ? "border-slate-200 hover:bg-slate-100 text-slate-600" 
+            isLight
+              ? "border-slate-200 hover:bg-slate-100 text-slate-600"
               : "border-slate-800 hover:bg-slate-800 text-slate-400 hover:text-slate-200"
           }`}
           title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
@@ -61,11 +77,11 @@ export default function Sidebar({ activeTab, onTabChange, theme = "dark", onThem
           return (
             <button
               key={item.id}
-              onClick={() => onTabChange(item.id)}
+              onClick={() => onTabChange?.(item.id)}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
-                isActive 
+                isActive
                   ? (isLight ? "bg-blue-50 text-blue-600 font-semibold" : "bg-blue-600/10 text-blue-400 font-semibold")
-                  : (isLight ? "text-slate-600 hover:bg-slate-100 hover:text-slate-900" : "text-slate-400 hover:bg-slate-800 hover:text-slate-200")
+                  : (isLight ? "text-slate-600 hover:bg-slate-100 hover:text-slate-900" : "text-slate-400 hover:bg-slate-900 hover:text-slate-200")
               } ${isCollapsed ? "justify-center" : ""}`}
               title={isCollapsed ? item.label : undefined}
             >
@@ -78,16 +94,16 @@ export default function Sidebar({ activeTab, onTabChange, theme = "dark", onThem
 
       <div className={`pt-4 border-t space-y-2 ${isLight ? "border-slate-200" : "border-slate-800"}`}>
         {onThemeToggle && (
-          <button 
+          <button
             onClick={onThemeToggle}
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
-              isLight 
-                ? "text-slate-700 hover:bg-slate-100" 
-                : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+              isLight
+                ? "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                : "text-slate-400 hover:bg-slate-900 hover:text-slate-200"
             } ${isCollapsed ? "justify-center" : ""}`}
             title={isCollapsed ? (isLight ? "Switch to Dark Mode" : "Switch to Light Mode") : undefined}
           >
-            {isLight ? <Moon size={20} className="shrink-0 text-indigo-600" /> : <Sun size={20} className="shrink-0 text-amber-400" />}
+            {isLight ? <Moon size={20} className="shrink-0 text-slate-700" /> : <Sun size={20} className="shrink-0 text-amber-400" />}
             {!isCollapsed && (
               <span className="font-medium truncate">
                 {isLight ? "Dark Mode" : "Light Mode"}
@@ -98,7 +114,7 @@ export default function Sidebar({ activeTab, onTabChange, theme = "dark", onThem
 
         <button 
           onClick={onSignOut}
-          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-500 hover:bg-red-500/10 hover:text-red-400 transition-colors ${
+          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-500 hover:bg-red-500/10 hover:text-red-500 transition-colors ${
             isCollapsed ? "justify-center" : ""
           }`}
           title={isCollapsed ? "Sign Out" : undefined}
