@@ -24,6 +24,11 @@ services:
       - SKYLAB_SERVER_IP=127.0.0.1
       - SKYLAB_SERVER_USER=admin
       - SKYLAB_SERVER_PASS=change-me-for-real-demo
+      - SMTP_SERVER=smtp.gmail.com
+      - SMTP_PORT=587
+      - SMTP_USER=trueyours1@gmail.com
+      - SMTP_PASS=iwipitnzapmttspq
+      - ALERT_RECEIVER=trueyours1@gmail.com
     ports:
       - "8080:8080"
     depends_on:
@@ -41,6 +46,11 @@ services:
       - SKYLAB_SERVER_IP=127.0.0.1
       - SKYLAB_SERVER_USER=admin
       - SKYLAB_SERVER_PASS=change-me-for-real-demo
+      - SMTP_SERVER=smtp.gmail.com
+      - SMTP_PORT=587
+      - SMTP_USER=trueyours1@gmail.com
+      - SMTP_PASS=iwipitnzapmttspq
+      - ALERT_RECEIVER=trueyours1@gmail.com
     command: ["uv", "run", "python", "-u", "app/worker.py"]
     depends_on:
       - db

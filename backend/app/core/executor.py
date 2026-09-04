@@ -3,10 +3,11 @@ import hashlib
 import paramiko
 import socket
 import random
+from typing import Optional, List
 from app.core.security import settings
 from app.core.mock_data import MOCK_MICROSERVICES
 
-def get_mock_metrics(hostname: str, server_name: str = None, status_override: str = None, stopped_containers: list = None) -> dict:
+def get_mock_metrics(hostname: str, server_name: Optional[str] = None, status_override: Optional[str] = None, stopped_containers: Optional[List[str]] = None) -> dict:
     if status_override == "ssh_fail" or (server_name and "[SSH_FAIL]" in server_name):
         return {"success": False, "error": "SSH Dial Timeouts: connection handshake failed."}
 
@@ -57,13 +58,13 @@ def get_mock_metrics(hostname: str, server_name: str = None, status_override: st
 def execute_ssh_commands(
     hostname: str,
     username: str,
-    password: str = None,
-    private_key: str = None,
+    password: Optional[str] = None,
+    private_key: Optional[str] = None,
     port: int = 22,
     timeout: float = 10.0,
-    server_name: str = None,
-    status_override: str = None,
-    stopped_containers: list = None
+    server_name: Optional[str] = None,
+    status_override: Optional[str] = None,
+    stopped_containers: Optional[List[str]] = None
 ) -> dict:
     if settings.DEMO_MODE == "true":
         return get_mock_metrics(hostname, server_name, status_override, stopped_containers)

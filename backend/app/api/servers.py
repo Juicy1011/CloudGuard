@@ -124,6 +124,18 @@ def manage_container(server_id: int, container_id: str, payload: ContainerAction
                 stopped.remove(container_id)
         
         server.stopped_containers = stopped
+
+        new_status = "Exited (0) 5 seconds ago" if action == "stop" else "Up 5 seconds"
+        clog = db.query(ContainerLog).filter(
+            ContainerLog.server_id == server_id,
+            ContainerLog.container_id == container_id
+        ).first()
+        if clog:
+            clog.status = new_status
+            if action == "stop":
+                clog.cpu_percent = 0.0
+                clog.memory_percent = 0.0
+
         db.commit()
         db.refresh(server)
         return {"message": f"Demo: Container {container_id} {action_past} successfully."}
@@ -153,7 +165,7 @@ def manage_container(server_id: int, container_id: str, payload: ContainerAction
                 pkey=pkey,
                 timeout=10.0
             )
-            cmd = f"docker {action} {container_id}"
+            cmd = f"docker stop -t 1 {container_id}" if action == "stop" else f"docker {action} {container_id}"
             stdin, stdout, stderr = client.exec_command(cmd, timeout=10.0)
             exit_status = stdout.channel.recv_exit_status()
             
@@ -168,6 +180,18 @@ def manage_container(server_id: int, container_id: str, payload: ContainerAction
                 stopped.remove(container_id)
                 
             server.stopped_containers = stopped
+            
+            new_status = "Exited (0) 5 seconds ago" if action == "stop" else "Up 5 seconds"
+            clog = db.query(ContainerLog).filter(
+                ContainerLog.server_id == server_id,
+                ContainerLog.container_id == container_id
+            ).first()
+            if clog:
+                clog.status = new_status
+                if action == "stop":
+                    clog.cpu_percent = 0.0
+                    clog.memory_percent = 0.0
+
             db.commit()
             
             return {"message": f"Container {container_id} {action_past} successfully."}
