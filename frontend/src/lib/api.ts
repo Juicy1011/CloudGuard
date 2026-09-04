@@ -165,4 +165,3 @@ export async function deleteNotificationEmail(identifier: string | number) {
   }
   return response.json();
 }
-

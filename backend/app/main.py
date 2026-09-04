@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import servers, health
+from app.api import servers, health, auth, settings
 
 app = FastAPI(title="CloudGuard API")
 
@@ -14,6 +14,8 @@ app.add_middleware(
 
 app.include_router(servers.router, prefix="/api/servers", tags=["servers"])
 app.include_router(health.router, prefix="/api/health", tags=["health"])
+app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
+app.include_router(settings.router, prefix="/api/settings", tags=["settings"])
 
 @app.get("/")
 async def root():

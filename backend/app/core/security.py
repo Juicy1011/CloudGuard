@@ -10,6 +10,13 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     DATABASE_URL: str = os.getenv("DATABASE_URL", "postgresql://cloudguard:cloudguard_password@localhost:5440/cloudguard")
     DEMO_MODE: str = "false"
+    
+    SMTP_SERVER: str = os.getenv("SMTP_SERVER", "smtp.gmail.com")
+    SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
+    SMTP_USER: str = os.getenv("SMTP_USER", "")
+    SMTP_PASS: str = os.getenv("SMTP_PASS", "")
+    ALERT_RECEIVER: str = os.getenv("ALERT_RECEIVER", "trueyours1@gmail.com")
+    
     SKYLAB_SERVER_IP: str = "127.0.0.1"
     SKYLAB_SERVER_USER: str = "admin"
     SKYLAB_SERVER_PASS: str = ""
@@ -19,7 +26,7 @@ class Settings(BaseSettings):
         extra = "ignore"
 
 settings = Settings()
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 fernet = Fernet(settings.ENCRYPTION_KEY.encode())
 
 def encrypt_credential(value: str) -> str:
