@@ -16,33 +16,44 @@ interface StatusCardProps {
   ram: number;
   latency: number;
   onClick?: (id: number) => void;
+  theme?: "dark" | "light";
 }
 
-export default function StatusCard({ id, name, hostname, status, cpu, ram, latency, onClick }: StatusCardProps) {
+export default function StatusCard({ id, name, hostname, status, cpu, ram, latency, onClick, theme = "dark" }: StatusCardProps) {
   const isOnline = status === "online";
+  const isLight = theme === "light";
 
   return (
     <div 
       onClick={() => onClick?.(id)}
-      className="bg-slate-800/50 border border-slate-700 rounded-xl p-6 hover:border-blue-500/50 transition-colors cursor-pointer"
+      className={cn(
+        "border rounded-xl p-6 transition-colors cursor-pointer",
+        isLight
+          ? "bg-white border-slate-200 shadow-sm hover:border-blue-400 text-slate-800"
+          : "bg-slate-800/50 border-slate-700 hover:border-blue-500/50 text-slate-100"
+      )}
     >
       <div className="flex items-start justify-between mb-6">
         <div className="flex items-center gap-3">
           <div className={cn(
             "p-2 rounded-lg",
-            isOnline ? "bg-blue-500/10 text-blue-400" : "bg-red-500/10 text-red-400"
+            isOnline 
+              ? (isLight ? "bg-blue-100 text-blue-600" : "bg-blue-500/10 text-blue-400") 
+              : (isLight ? "bg-red-100 text-red-600" : "bg-red-500/10 text-red-400")
           )}>
             <Server size={20} />
           </div>
           <div>
-            <h3 className="font-semibold text-lg">{name}</h3>
-            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Cloud Instance</p>
+            <h3 className={cn("font-semibold text-lg", isLight ? "text-slate-900" : "text-slate-100")}>{name}</h3>
+            <p className={cn("text-xs font-medium uppercase tracking-wider", isLight ? "text-slate-400" : "text-slate-500")}>Cloud Instance</p>
           </div>
 
         </div>
         <div className={cn(
           "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium uppercase tracking-wider",
-          isOnline ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"
+          isOnline 
+            ? (isLight ? "bg-emerald-100 text-emerald-700" : "bg-emerald-500/10 text-emerald-400") 
+            : (isLight ? "bg-red-100 text-red-700" : "bg-red-500/10 text-red-400")
         )}>
           {isOnline ? <CheckCircle size={12} /> : <XCircle size={12} />}
           {status}
@@ -51,11 +62,11 @@ export default function StatusCard({ id, name, hostname, status, cpu, ram, laten
 
       <div className="space-y-4">
         <div className="space-y-2">
-          <div className="flex justify-between text-xs text-slate-400 mb-1">
+          <div className={cn("flex justify-between text-xs mb-1", isLight ? "text-slate-500" : "text-slate-400")}>
             <span className="flex items-center gap-1"><Cpu size={12} /> CPU Usage</span>
             <span>{cpu}%</span>
           </div>
-          <div className="h-1.5 w-full bg-slate-700 rounded-full overflow-hidden">
+          <div className={cn("h-1.5 w-full rounded-full overflow-hidden", isLight ? "bg-slate-200" : "bg-slate-700")}>
             <div 
               className={cn("h-full transition-all", cpu > 80 ? "bg-red-500" : "bg-blue-500")}
               style={{ width: `${cpu}%` }}
@@ -64,11 +75,11 @@ export default function StatusCard({ id, name, hostname, status, cpu, ram, laten
         </div>
 
         <div className="space-y-2">
-          <div className="flex justify-between text-xs text-slate-400 mb-1">
+          <div className={cn("flex justify-between text-xs mb-1", isLight ? "text-slate-500" : "text-slate-400")}>
             <span className="flex items-center gap-1"><Activity size={12} /> RAM Usage</span>
             <span>{ram}%</span>
           </div>
-          <div className="h-1.5 w-full bg-slate-700 rounded-full overflow-hidden">
+          <div className={cn("h-1.5 w-full rounded-full overflow-hidden", isLight ? "bg-slate-200" : "bg-slate-700")}>
             <div 
               className={cn("h-full transition-all", ram > 80 ? "bg-red-500" : "bg-blue-500")}
               style={{ width: `${ram}%` }}
@@ -76,9 +87,9 @@ export default function StatusCard({ id, name, hostname, status, cpu, ram, laten
           </div>
         </div>
 
-        <div className="flex items-center justify-between pt-4 border-t border-slate-700/50">
-          <span className="text-xs text-slate-500">Latency</span>
-          <span className="text-sm font-medium text-slate-300">{latency} ms</span>
+        <div className={cn("flex items-center justify-between pt-4 border-t", isLight ? "border-slate-100" : "border-slate-700/50")}>
+          <span className={cn("text-xs", isLight ? "text-slate-400" : "text-slate-500")}>Latency</span>
+          <span className={cn("text-sm font-medium", isLight ? "text-slate-700" : "text-slate-300")}>{latency} ms</span>
         </div>
       </div>
     </div>
