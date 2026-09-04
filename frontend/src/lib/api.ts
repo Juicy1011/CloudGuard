@@ -71,13 +71,14 @@ export async function manageContainer(serverId: number, containerId: string, act
   return response.json();
 }
 
-export async function loginUser(credentials: any) {
+export async function loginUser(emailOrData: any, password?: string) {
+  const payload = typeof emailOrData === "string" ? { email: emailOrData, password } : emailOrData;
   const response = await fetch(`${getApiBaseUrl()}/auth/login`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(credentials),
+    body: JSON.stringify(payload),
   });
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
@@ -86,13 +87,14 @@ export async function loginUser(credentials: any) {
   return response.json();
 }
 
-export async function registerUser(userData: any) {
+export async function registerUser(usernameOrData: any, email?: string, password?: string) {
+  const payload = typeof usernameOrData === "string" ? { username: usernameOrData, email, password } : usernameOrData;
   const response = await fetch(`${getApiBaseUrl()}/auth/register`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(userData),
+    body: JSON.stringify(payload),
   });
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
@@ -116,13 +118,14 @@ export async function requestPasswordReset(email: string) {
   return response.json();
 }
 
-export async function confirmPasswordReset(data: any) {
+export async function confirmPasswordReset(emailOrData: any, otp?: string, new_password?: string) {
+  const payload = typeof emailOrData === "string" ? { email: emailOrData, otp, new_password } : emailOrData;
   const response = await fetch(`${getApiBaseUrl()}/auth/reset-password`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(data),
+    body: JSON.stringify(payload),
   });
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
