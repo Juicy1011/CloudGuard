@@ -26,25 +26,26 @@ export default function StatusCard({ id, name, hostname, status, cpu, ram, laten
   return (
     <div 
       onClick={() => onClick?.(id)}
-      className={`border rounded-xl p-6 transition-all duration-200 cursor-pointer ${
-        isLight 
-          ? "bg-white border-slate-200 shadow-sm hover:shadow-md hover:border-blue-400 text-slate-800" 
+      className={cn(
+        "border rounded-xl p-6 transition-colors cursor-pointer",
+        isLight
+          ? "bg-white border-slate-200 shadow-sm hover:border-blue-400 text-slate-800"
           : "bg-slate-800/50 border-slate-700 hover:border-blue-500/50 text-slate-100"
-      }`}
+      )}
     >
       <div className="flex items-start justify-between mb-6">
         <div className="flex items-center gap-3">
           <div className={cn(
             "p-2 rounded-lg",
             isOnline 
-              ? (isLight ? "bg-blue-100 text-blue-600" : "bg-blue-500/10 text-blue-400")
+              ? (isLight ? "bg-blue-100 text-blue-600" : "bg-blue-500/10 text-blue-400") 
               : (isLight ? "bg-red-100 text-red-600" : "bg-red-500/10 text-red-400")
           )}>
             <Server size={20} />
           </div>
           <div>
-            <h3 className={`font-semibold text-lg ${isLight ? "text-slate-900" : "text-slate-100"}`}>{name}</h3>
-            <p className={`text-xs font-medium uppercase tracking-wider ${isLight ? "text-slate-400" : "text-slate-500"}`}>Cloud Instance</p>
+            <h3 className={cn("font-semibold text-lg", isLight ? "text-slate-900" : "text-slate-100")}>{name}</h3>
+            <p className={cn("text-xs font-medium uppercase tracking-wider", isLight ? "text-slate-400" : "text-slate-500")}>Cloud Instance</p>
           </div>
 
         </div>
@@ -61,11 +62,11 @@ export default function StatusCard({ id, name, hostname, status, cpu, ram, laten
 
       <div className="space-y-4">
         <div className="space-y-2">
-          <div className={`flex justify-between text-xs mb-1 ${isLight ? "text-slate-500" : "text-slate-400"}`}>
+          <div className={cn("flex justify-between text-xs mb-1", isLight ? "text-slate-500" : "text-slate-400")}>
             <span className="flex items-center gap-1"><Cpu size={12} /> CPU Usage</span>
             <span>{cpu}%</span>
           </div>
-          <div className={`h-1.5 w-full rounded-full overflow-hidden ${isLight ? "bg-slate-100" : "bg-slate-700"}`}>
+          <div className={cn("h-1.5 w-full rounded-full overflow-hidden", isLight ? "bg-slate-200" : "bg-slate-700")}>
             <div 
               className={cn("h-full transition-all", cpu > 80 ? "bg-red-500" : "bg-blue-500")}
               style={{ width: `${cpu}%` }}
@@ -74,11 +75,11 @@ export default function StatusCard({ id, name, hostname, status, cpu, ram, laten
         </div>
 
         <div className="space-y-2">
-          <div className={`flex justify-between text-xs mb-1 ${isLight ? "text-slate-500" : "text-slate-400"}`}>
+          <div className={cn("flex justify-between text-xs mb-1", isLight ? "text-slate-500" : "text-slate-400")}>
             <span className="flex items-center gap-1"><Activity size={12} /> RAM Usage</span>
             <span>{ram}%</span>
           </div>
-          <div className={`h-1.5 w-full rounded-full overflow-hidden ${isLight ? "bg-slate-100" : "bg-slate-700"}`}>
+          <div className={cn("h-1.5 w-full rounded-full overflow-hidden", isLight ? "bg-slate-200" : "bg-slate-700")}>
             <div 
               className={cn("h-full transition-all", ram > 80 ? "bg-red-500" : "bg-blue-500")}
               style={{ width: `${ram}%` }}
@@ -86,9 +87,9 @@ export default function StatusCard({ id, name, hostname, status, cpu, ram, laten
           </div>
         </div>
 
-        <div className={`flex items-center justify-between pt-4 border-t ${isLight ? "border-slate-100 text-slate-600" : "border-slate-700/50 text-slate-300"}`}>
-          <span className={`text-xs ${isLight ? "text-slate-400" : "text-slate-500"}`}>Latency</span>
-          <span className="text-sm font-medium">{latency} ms</span>
+        <div className={cn("flex items-center justify-between pt-4 border-t", isLight ? "border-slate-100" : "border-slate-700/50")}>
+          <span className={cn("text-xs", isLight ? "text-slate-400" : "text-slate-500")}>Latency</span>
+          <span className={cn("text-sm font-medium", isLight ? "text-slate-700" : "text-slate-300")}>{latency} ms</span>
         </div>
       </div>
     </div>
