@@ -1,3 +1,5 @@
+import { getStoredUser } from "./auth";
+
 export function getApiBaseUrl(): string {
   if (typeof window !== "undefined") {
     const host = window.location.hostname;
@@ -6,14 +8,30 @@ export function getApiBaseUrl(): string {
   return "http://127.0.0.1:8080/api";
 }
 
+function getAuthHeaders(): Record<string, string> {
+  const user = getStoredUser();
+  if (user?.id) {
+    return { "X-User-Id": String(user.id) };
+  }
+  return {};
+}
+
 export async function fetchServers() {
-  const response = await fetch(`${getApiBaseUrl()}/servers/`);
+  const response = await fetch(`${getApiBaseUrl()}/servers/`, {
+    headers: {
+      ...getAuthHeaders(),
+    },
+  });
   if (!response.ok) throw new Error("Failed to fetch servers");
   return response.json();
 }
 
 export async function fetchServerDetail(serverId: number) {
-  const response = await fetch(`${getApiBaseUrl()}/servers/${serverId}`);
+  const response = await fetch(`${getApiBaseUrl()}/servers/${serverId}`, {
+    headers: {
+      ...getAuthHeaders(),
+    },
+  });
   if (!response.ok) throw new Error("Failed to fetch server details");
   return response.json();
 }
@@ -23,6 +41,7 @@ export async function createServer(serverData: any) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      ...getAuthHeaders(),
     },
     body: JSON.stringify(serverData),
   });
@@ -36,6 +55,9 @@ export async function createServer(serverData: any) {
 export async function deleteServer(serverId: number) {
   const response = await fetch(`${getApiBaseUrl()}/servers/${serverId}`, {
     method: "DELETE",
+    headers: {
+      ...getAuthHeaders(),
+    },
   });
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
@@ -49,6 +71,7 @@ export async function triggerChaos(serverId: number, override: string | null) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      ...getAuthHeaders(),
     },
     body: JSON.stringify({ override }),
   });
@@ -61,6 +84,7 @@ export async function manageContainer(serverId: number, containerId: string, act
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      ...getAuthHeaders(),
     },
     body: JSON.stringify({ action }),
   });
