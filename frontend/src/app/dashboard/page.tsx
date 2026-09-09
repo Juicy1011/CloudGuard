@@ -20,6 +20,7 @@ export default function DashboardRoute() {
   const [selectedServer, setSelectedServer] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
 
   const [alertEmails, setAlertEmails] = useState<string[]>(["trueyours1@gmail.com"]);
   const [newEmailInput, setNewEmailInput] = useState("");
@@ -187,6 +188,7 @@ export default function DashboardRoute() {
                   cpu={selectedServer.latest_health?.cpu_percent || 0}
                   ram={selectedServer.latest_health?.memory_percent || 0}
                   latency={selectedServer.latest_health?.latency || 0}
+                  containerCount={selectedServer.containers?.length || 0}
                   theme={theme}
                 />
                 
@@ -216,15 +218,22 @@ export default function DashboardRoute() {
           return matchesName || matchesHost || matchesStatus || matchesContainer;
         });
 
+        const totalNodes = servers.length;
+        const onlineNodes = servers.filter(s => s.last_status === "online").length;
+        const offlineNodes = totalNodes - onlineNodes;
+        const avgLatency = totalNodes > 0
+          ? (servers.reduce((acc, s) => acc + (s.latest_health?.latency || 0), 0) / totalNodes).toFixed(1)
+          : "0.0";
+
         return (
           <>
-            <header className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <header className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <h1 className={`text-3xl font-bold tracking-tight ${isLight ? "text-slate-900" : "text-slate-100"}`}>
                   Infrastructure Overview
                 </h1>
-                <p className={isLight ? "text-slate-500" : "text-slate-400"}>
-                  Monitoring real-time health of discovered host nodes.
+                <p className={`text-sm ${isLight ? "text-slate-500" : "text-slate-400"}`}>
+                  Monitoring real-time health and microservices across host nodes.
                 </p>
               </div>
 
@@ -236,9 +245,9 @@ export default function DashboardRoute() {
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search instances or microservices..."
-                    className={`w-full pl-9 pr-8 py-2 rounded-lg text-sm transition-colors border focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    className={`w-full pl-9 pr-8 py-2 rounded-xl text-sm transition-all border focus:outline-none focus:ring-2 focus:ring-blue-500/80 ${
                       isLight
-                        ? "bg-white border-slate-200 text-slate-900 placeholder:text-slate-400"
+                        ? "bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 shadow-sm"
                         : "bg-slate-900/60 border-slate-800 text-slate-100 placeholder:text-slate-500"
                     }`}
                   />
@@ -256,17 +265,77 @@ export default function DashboardRoute() {
 
                 <button 
                   onClick={loadData} 
-                  className={`p-2 border rounded-lg transition-colors shrink-0 ${
+                  className={`p-2.5 border rounded-xl transition-all shrink-0 active:scale-95 ${
                     isLight 
-                      ? "border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100" 
-                      : "border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-900"
+                      ? "border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 bg-white shadow-sm" 
+                      : "border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-900 bg-slate-900/60"
                   }`}
                   title="Refresh inventory metrics"
                 >
-                  <RefreshCw size={16} />
+                  <RefreshCw size={16} className={loading ? "animate-spin text-blue-500" : ""} />
                 </button>
               </div>
             </header>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+              <div className={`p-4 border rounded-2xl transition-all duration-300 shadow-sm ${
+                isLight 
+                  ? "bg-gradient-to-br from-indigo-50/80 via-white to-white border-indigo-100/80 hover:border-indigo-300" 
+                  : "bg-gradient-to-br from-indigo-950/30 via-slate-900/60 to-slate-900/40 border-indigo-500/20 backdrop-blur-md hover:border-indigo-500/40"
+              }`}>
+                <p className={`text-xs font-semibold uppercase tracking-wider mb-2 ${isLight ? "text-indigo-600/80" : "text-indigo-400/90"}`}>Monitored Hosts</p>
+                <div className="flex items-baseline justify-between">
+                  <span className={`text-2xl font-bold font-mono ${isLight ? "text-slate-900" : "text-slate-100"}`}>{totalNodes}</span>
+                  <div className={`p-2 rounded-xl ${isLight ? "bg-indigo-100 text-indigo-600" : "bg-indigo-500/20 text-indigo-400"}`}>
+                    <HardDrive size={18} />
+                  </div>
+                </div>
+              </div>
+
+              <div className={`p-4 border rounded-2xl transition-all duration-300 shadow-sm ${
+                isLight 
+                  ? "bg-gradient-to-br from-emerald-50/80 via-white to-white border-emerald-100/80 hover:border-emerald-300" 
+                  : "bg-gradient-to-br from-emerald-950/30 via-slate-900/60 to-slate-900/40 border-emerald-500/20 backdrop-blur-md hover:border-emerald-500/40"
+              }`}>
+                <p className={`text-xs font-semibold uppercase tracking-wider mb-2 ${isLight ? "text-emerald-700/80" : "text-emerald-400/90"}`}>Healthy Nodes</p>
+                <div className="flex items-baseline justify-between">
+                  <span className="text-2xl font-bold font-mono text-emerald-500">{onlineNodes}</span>
+                  <div className={`p-2 rounded-xl ${isLight ? "bg-emerald-100 text-emerald-600" : "bg-emerald-500/20 text-emerald-400"}`}>
+                    <CheckCircle size={18} />
+                  </div>
+                </div>
+              </div>
+
+              <div className={`p-4 border rounded-2xl transition-all duration-300 shadow-sm ${
+                isLight 
+                  ? "bg-gradient-to-br from-rose-50/80 via-white to-white border-rose-100/80 hover:border-rose-300" 
+                  : "bg-gradient-to-br from-rose-950/30 via-slate-900/60 to-slate-900/40 border-rose-500/20 backdrop-blur-md hover:border-rose-500/40"
+              }`}>
+                <p className={`text-xs font-semibold uppercase tracking-wider mb-2 ${isLight ? "text-rose-700/80" : "text-rose-400/90"}`}>Outage Alerts</p>
+                <div className="flex items-baseline justify-between">
+                  <span className={`text-2xl font-bold font-mono ${offlineNodes > 0 ? 'text-rose-500' : isLight ? 'text-slate-400' : 'text-slate-600'}`}>
+                    {offlineNodes}
+                  </span>
+                  <div className={`p-2 rounded-xl ${offlineNodes > 0 ? (isLight ? "bg-rose-100 text-rose-600" : "bg-rose-500/20 text-rose-400") : (isLight ? "bg-slate-100 text-slate-400" : "bg-slate-800 text-slate-600")}`}>
+                    <AlertCircle size={18} />
+                  </div>
+                </div>
+              </div>
+
+              <div className={`p-4 border rounded-2xl transition-all duration-300 shadow-sm ${
+                isLight 
+                  ? "bg-gradient-to-br from-sky-50/80 via-white to-white border-sky-100/80 hover:border-sky-300" 
+                  : "bg-gradient-to-br from-sky-950/30 via-slate-900/60 to-slate-900/40 border-sky-500/20 backdrop-blur-md hover:border-sky-500/40"
+              }`}>
+                <p className={`text-xs font-semibold uppercase tracking-wider mb-2 ${isLight ? "text-sky-700/80" : "text-sky-400/90"}`}>Fleet Avg Latency</p>
+                <div className="flex items-baseline justify-between">
+                  <span className={`text-2xl font-bold font-mono ${isLight ? "text-slate-900" : "text-slate-100"}`}>{avgLatency} <span className="text-xs text-slate-500">ms</span></span>
+                  <div className={`p-2 rounded-xl ${isLight ? "bg-sky-100 text-sky-600" : "bg-sky-500/20 text-sky-400"}`}>
+                    <Clock size={18} />
+                  </div>
+                </div>
+              </div>
+            </div>
 
             {loading ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-pulse">
@@ -310,6 +379,7 @@ export default function DashboardRoute() {
                       cpu={server.latest_health?.cpu_percent || 0}
                       ram={server.latest_health?.memory_percent || 0}
                       latency={server.latest_health?.latency || 0}
+                      containerCount={server.containers?.length || 0}
                       onClick={() => setSelectedServer(server)}
                       theme={theme}
                     />
@@ -774,6 +844,7 @@ export default function DashboardRoute() {
         theme={theme}
         onThemeToggle={toggleTheme}
         onSignOut={handleSignOut}
+        user={user}
       />
       <main className="flex-1 overflow-y-auto p-8">
         {renderContent()}
