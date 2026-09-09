@@ -8,7 +8,7 @@ import MicroservicesList from "@/components/MicroservicesList";
 import InfrastructureView from "@/components/InfrastructureView";
 import { fetchServers, fetchServerDetail, fetchNotificationEmails, addNotificationEmail, deleteNotificationEmail } from "@/lib/api";
 import { getStoredUser, clearStoredUser, UserSession } from "@/lib/auth";
-import { ChevronLeft, AlertCircle, Bell, AlertTriangle, Key, Settings, CheckCircle, RefreshCw, LogOut, Search, X, User as UserIcon, Mail, Plus, Trash2, ShieldCheck, Clock, HardDrive } from "lucide-react";
+import { ChevronLeft, AlertCircle, Bell, AlertTriangle, Key, Settings, CheckCircle, RefreshCw, LogOut, Search, X, User as UserIcon, Mail, Plus, Trash2, ShieldCheck, Clock, HardDrive, ArrowRight } from "lucide-react";
 
 export default function DashboardRoute() {
   const router = useRouter();
@@ -220,7 +220,16 @@ export default function DashboardRoute() {
 
         const totalNodes = servers.length;
         const onlineNodes = servers.filter(s => s.last_status === "online").length;
-        const offlineNodes = totalNodes - onlineNodes;
+        const offlineServers = totalNodes - onlineNodes;
+        
+        const exitedContainers = servers.reduce((acc, server) => {
+          if (!server.containers) return acc;
+          const stopped = server.containers.filter((c: any) => !c.status.toLowerCase().startsWith("up")).length;
+          return acc + stopped;
+        }, 0);
+
+        const totalOutages = offlineServers + exitedContainers;
+
         const avgLatency = totalNodes > 0
           ? (servers.reduce((acc, s) => acc + (s.latest_health?.latency || 0), 0) / totalNodes).toFixed(1)
           : "0.0";
@@ -313,10 +322,10 @@ export default function DashboardRoute() {
               }`}>
                 <p className={`text-xs font-semibold uppercase tracking-wider mb-2 ${isLight ? "text-rose-700/80" : "text-rose-400/90"}`}>Outage Alerts</p>
                 <div className="flex items-baseline justify-between">
-                  <span className={`text-2xl font-bold font-mono ${offlineNodes > 0 ? 'text-rose-500' : isLight ? 'text-slate-400' : 'text-slate-600'}`}>
-                    {offlineNodes}
+                  <span className={`text-2xl font-bold font-mono ${totalOutages > 0 ? 'text-rose-500' : isLight ? 'text-slate-400' : 'text-slate-600'}`}>
+                    {totalOutages}
                   </span>
-                  <div className={`p-2 rounded-xl ${offlineNodes > 0 ? (isLight ? "bg-rose-100 text-rose-600" : "bg-rose-500/20 text-rose-400") : (isLight ? "bg-slate-100 text-slate-400" : "bg-slate-800 text-slate-600")}`}>
+                  <div className={`p-2 rounded-xl ${totalOutages > 0 ? (isLight ? "bg-rose-100 text-rose-600 animate-pulse" : "bg-rose-500/20 text-rose-400 animate-pulse") : (isLight ? "bg-slate-100 text-slate-400" : "bg-slate-800 text-slate-600")}`}>
                     <AlertCircle size={18} />
                   </div>
                 </div>
@@ -399,6 +408,7 @@ export default function DashboardRoute() {
           if (server.last_status !== "online") {
             incidents.push({
               id: `server-${server.id}`,
+              serverId: server.id,
               type: "server",
               severity: "CRITICAL",
               title: `Host Down: ${server.name}`,
@@ -410,6 +420,7 @@ export default function DashboardRoute() {
             if (!c.status.toLowerCase().startsWith("up")) {
               incidents.push({
                 id: `container-${server.id}-${c.container_id}`,
+                serverId: server.id,
                 type: "container",
                 severity: "WARNING",
                 title: `Microservice Stopped: ${c.name} on ${server.name}`,
@@ -458,24 +469,36 @@ export default function DashboardRoute() {
                   {incidents.map((incident) => (
                     <div 
                       key={incident.id} 
-                      className={`border rounded-lg p-5 flex items-start gap-4 transition-colors ${
+                      onClick={() => {
+                        const targetServer = servers.find((s) => s.id === incident.serverId);
+                        if (targetServer) {
+                          setSelectedServer(targetServer);
+                          setActiveTab("dashboard");
+                        }
+                      }}
+                      className={`group border rounded-xl p-5 flex items-start gap-4 transition-all cursor-pointer ${
                         incident.severity === "CRITICAL" 
-                          ? "bg-red-500/5 border-red-500/20" 
-                          : "bg-amber-500/5 border-amber-500/20"
+                          ? (isLight ? "bg-red-50/60 border-red-200 hover:border-red-400 hover:shadow-md" : "bg-red-500/5 border-red-500/20 hover:border-red-500/40 hover:bg-red-500/10") 
+                          : (isLight ? "bg-amber-50/60 border-amber-200 hover:border-amber-400 hover:shadow-md" : "bg-amber-500/5 border-amber-500/20 hover:border-amber-500/40 hover:bg-amber-500/10")
                       }`}
                     >
-                      <div className={`p-2.5 rounded-md ${
+                      <div className={`p-2.5 rounded-xl transition-all group-hover:scale-105 ${
                         incident.severity === "CRITICAL" ? "bg-red-500/10 text-red-500" : "bg-amber-500/10 text-amber-500"
                       }`}>
                         <AlertTriangle size={20} />
                       </div>
                       <div className="flex-1 space-y-1">
                         <div className="flex items-center justify-between">
-                          <span className={`text-xs font-semibold tracking-wider px-2 py-0.5 rounded ${
-                            incident.severity === "CRITICAL" ? "bg-red-500/10 text-red-500" : "bg-amber-500/10 text-amber-500"
-                          }`}>
-                            {incident.severity}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className={`text-xs font-semibold tracking-wider px-2 py-0.5 rounded ${
+                              incident.severity === "CRITICAL" ? "bg-red-500/10 text-red-500" : "bg-amber-500/10 text-amber-500"
+                            }`}>
+                              {incident.severity}
+                            </span>
+                            <span className="text-xs text-blue-500 font-medium opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                              Inspect Host & Microservice <ArrowRight size={12} />
+                            </span>
+                          </div>
                           <span className="text-xs text-slate-500 font-mono">{incident.time}</span>
                         </div>
                         <h4 className={`font-bold ${isLight ? "text-slate-900" : "text-slate-100"}`}>{incident.title}</h4>

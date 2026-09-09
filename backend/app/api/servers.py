@@ -21,12 +21,15 @@ def get_current_user_id(x_user_id: Optional[str] = Header(None)) -> Optional[int
 
 @router.post("/", response_model=ServerView, status_code=status.HTTP_201_CREATED)
 def create_server(server: ServerCreate, db: Session = Depends(get_db), current_user_id: Optional[int] = Depends(get_current_user_id)):
-    query = db.query(Server).filter(Server.hostname == server.hostname)
-    if current_user_id is not None:
-        query = query.filter((Server.owner_id == current_user_id) | (Server.owner_id == None))
-    db_server = query.first()
+    if current_user_id is None:
+        raise HTTPException(status_code=401, detail="Authentication required to enroll servers.")
+
+    db_server = db.query(Server).filter(
+        Server.hostname == server.hostname,
+        Server.owner_id == current_user_id
+    ).first()
     if db_server:
-        raise HTTPException(status_code=400, detail="Server with this hostname already exists.")
+        raise HTTPException(status_code=400, detail="Server with this hostname already exists in your workspace.")
     
     enc_password = encrypt_credential(server.password) if server.password else None
     enc_key = encrypt_credential(server.private_key) if server.private_key else None
@@ -47,16 +50,16 @@ def create_server(server: ServerCreate, db: Session = Depends(get_db), current_u
 
 @router.get("/", response_model=List[ServerView])
 def list_servers(db: Session = Depends(get_db), current_user_id: Optional[int] = Depends(get_current_user_id)):
-    if current_user_id is not None:
-        return db.query(Server).filter((Server.owner_id == current_user_id) | (Server.owner_id == None)).all()
-    return db.query(Server).all()
+    target_id = current_user_id if current_user_id is not None else 1
+    return db.query(Server).filter((Server.owner_id == target_id) | (Server.owner_id == None)).all()
 
 @router.get("/{server_id}", response_model=ServerDetail)
 def get_server_detail(server_id: int, db: Session = Depends(get_db), current_user_id: Optional[int] = Depends(get_current_user_id)):
-    query = db.query(Server).filter(Server.id == server_id)
-    if current_user_id is not None:
-        query = query.filter((Server.owner_id == current_user_id) | (Server.owner_id == None))
-    server = query.first()
+    target_id = current_user_id if current_user_id is not None else 1
+    server = db.query(Server).filter(
+        Server.id == server_id,
+        (Server.owner_id == target_id) | (Server.owner_id == None)
+    ).first()
     if not server:
         raise HTTPException(status_code=404, detail="Server not found")
         
@@ -103,10 +106,11 @@ def get_server_detail(server_id: int, db: Session = Depends(get_db), current_use
 
 @router.post("/{server_id}/chaos", response_model=ServerView)
 def trigger_chaos(server_id: int, trigger: ChaosTrigger, db: Session = Depends(get_db), current_user_id: Optional[int] = Depends(get_current_user_id)):
-    query = db.query(Server).filter(Server.id == server_id)
-    if current_user_id is not None:
-        query = query.filter((Server.owner_id == current_user_id) | (Server.owner_id == None))
-    server = query.first()
+    target_id = current_user_id if current_user_id is not None else 1
+    server = db.query(Server).filter(
+        Server.id == server_id,
+        (Server.owner_id == target_id) | (Server.owner_id == None)
+    ).first()
     if not server:
         raise HTTPException(status_code=404, detail="Server not found")
     
@@ -121,10 +125,11 @@ def trigger_chaos(server_id: int, trigger: ChaosTrigger, db: Session = Depends(g
 
 @router.post("/{server_id}/containers/{container_id}/action")
 def manage_container(server_id: int, container_id: str, payload: ContainerAction, db: Session = Depends(get_db), current_user_id: Optional[int] = Depends(get_current_user_id)):
-    query = db.query(Server).filter(Server.id == server_id)
-    if current_user_id is not None:
-        query = query.filter((Server.owner_id == current_user_id) | (Server.owner_id == None))
-    server = query.first()
+    target_id = current_user_id if current_user_id is not None else 1
+    server = db.query(Server).filter(
+        Server.id == server_id,
+        (Server.owner_id == target_id) | (Server.owner_id == None)
+    ).first()
     if not server:
         raise HTTPException(status_code=404, detail="Server not found")
         
@@ -226,10 +231,11 @@ def manage_container(server_id: int, container_id: str, payload: ContainerAction
 
 @router.delete("/{server_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_server(server_id: int, db: Session = Depends(get_db), current_user_id: Optional[int] = Depends(get_current_user_id)):
-    query = db.query(Server).filter(Server.id == server_id)
-    if current_user_id is not None:
-        query = query.filter((Server.owner_id == current_user_id) | (Server.owner_id == None))
-    server = query.first()
+    target_id = current_user_id if current_user_id is not None else 1
+    server = db.query(Server).filter(
+        Server.id == server_id,
+        (Server.owner_id == target_id) | (Server.owner_id == None)
+    ).first()
     if not server:
         raise HTTPException(status_code=404, detail="Server not found")
     db.delete(server)
