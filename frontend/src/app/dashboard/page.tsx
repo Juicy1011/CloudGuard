@@ -6,9 +6,9 @@ import Sidebar from "@/components/Sidebar";
 import StatusCard from "@/components/StatusCard";
 import MicroservicesList from "@/components/MicroservicesList";
 import InfrastructureView from "@/components/InfrastructureView";
-import { fetchServers, fetchServerDetail, fetchNotificationEmails, addNotificationEmail, deleteNotificationEmail, deleteUserAccount } from "@/lib/api";
+import { fetchServers, fetchServerDetail, fetchNotificationEmails, addNotificationEmail, deleteNotificationEmail, deleteUserAccount, revealServerCredentials } from "@/lib/api";
 import { getStoredUser, clearStoredUser, UserSession } from "@/lib/auth";
-import { ChevronLeft, AlertCircle, Bell, AlertTriangle, Key, Settings, CheckCircle, RefreshCw, LogOut, Search, X, User as UserIcon, Mail, Plus, Trash2, ShieldCheck, Clock, HardDrive, ArrowRight } from "lucide-react";
+import { ChevronLeft, AlertCircle, Bell, AlertTriangle, Key, Settings, CheckCircle, RefreshCw, LogOut, Search, X, User as UserIcon, Mail, Plus, Trash2, ShieldCheck, Clock, HardDrive, ArrowRight, Copy, Check, Unlock } from "lucide-react";
 
 export default function DashboardRoute() {
   const router = useRouter();
@@ -30,6 +30,57 @@ export default function DashboardRoute() {
   const [isDeleteAccountModalOpen, setIsDeleteAccountModalOpen] = useState(false);
   const [deleteAccountLoading, setDeleteAccountLoading] = useState(false);
   const [deleteAccountError, setDeleteAccountError] = useState<string | null>(null);
+
+  const [revealedCreds, setRevealedCreds] = useState<{ [serverId: number]: number }>({});
+  const [decryptedCreds, setDecryptedCreds] = useState<{ [serverId: number]: { password?: string; private_key?: string } }>({});
+  const [copiedCreds, setCopiedCreds] = useState<{ [serverId: number]: boolean }>({});
+
+  const handleToggleRevealCred = async (serverId: number) => {
+    if (revealedCreds[serverId] !== undefined) {
+      setRevealedCreds((prev) => {
+        const next = { ...prev };
+        delete next[serverId];
+        return next;
+      });
+      return;
+    }
+
+    try {
+      const res = await revealServerCredentials(serverId);
+      setDecryptedCreds((prev) => ({
+        ...prev,
+        [serverId]: { password: res.password, private_key: res.private_key }
+      }));
+    } catch (err) {
+      console.error("Failed to decrypt credentials:", err);
+    }
+
+    setRevealedCreds((prev) => ({ ...prev, [serverId]: 5 }));
+    
+    const intervalId = setInterval(() => {
+      setRevealedCreds((prev) => {
+        const current = prev[serverId];
+        if (current === undefined || current <= 1) {
+          clearInterval(intervalId);
+          const next = { ...prev };
+          delete next[serverId];
+          return next;
+        }
+        return { ...prev, [serverId]: current - 1 };
+      });
+    }, 1000);
+  };
+
+  const handleCopyCred = (e: React.MouseEvent, serverId: number, val: string) => {
+    e.stopPropagation();
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(val);
+    }
+    setCopiedCreds((prev) => ({ ...prev, [serverId]: true }));
+    setTimeout(() => {
+      setCopiedCreds((prev) => ({ ...prev, [serverId]: false }));
+    }, 2000);
+  };
 
   const handleDeleteAccount = async () => {
     if (!user || user.is_protected) return;
@@ -775,11 +826,53 @@ export default function DashboardRoute() {
                         <span className="text-slate-500">Status</span>
                         <p className="font-medium text-emerald-500">Vaulted & Secure</p>
                       </div>
-                      <span className={`px-3 py-1 rounded text-xs font-mono ${
-                        isLight ? "bg-slate-200 text-slate-700" : "bg-slate-800 text-slate-400"
-                      }`}>
-                        {server.private_key ? "PRIVATE_KEY" : "PASSWORD_AUTH"}
-                      </span>
+                      {(() => {
+                        const remaining = revealedCreds[server.id];
+                        const isRevealed = remaining !== undefined;
+                        const isCopied = copiedCreds[server.id];
+                        const decrypted = decryptedCreds[server.id];
+                        const credText = decrypted ? (decrypted.password || decrypted.private_key || "Vaulted Secret") : (server.private_key || server.password || "••••••••");
+                        const labelType = server.private_key ? "PRIVATE_KEY" : "PASSWORD_AUTH";
+
+                        return (
+                          <div 
+                            onClick={() => handleToggleRevealCred(server.id)}
+                            className={`group relative cursor-pointer select-none rounded-xl px-4 py-2 text-xs font-mono transition-all duration-500 border shadow-xs flex items-center gap-2.5 ${
+                              isRevealed 
+                                ? (isLight ? "bg-amber-50 border-amber-300 text-amber-900 shadow-amber-500/10" : "bg-amber-950/40 border-amber-500/40 text-amber-200 shadow-amber-500/10")
+                                : (isLight ? "bg-slate-200/80 hover:bg-slate-300/80 border-slate-300 text-slate-700" : "bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-300")
+                            }`}
+                            title={isRevealed ? "Click to lock credential" : "Click to reveal credential for 5 seconds"}
+                          >
+                            {isRevealed ? (
+                              <>
+                                <Unlock size={14} className="text-amber-500 shrink-0" />
+                                <span className="font-bold tracking-wider max-w-[140px] truncate">{credText}</span>
+                                
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleCopyCred(e, server.id, credText)}
+                                  className={`p-1 rounded transition-colors ${
+                                    isLight ? "hover:bg-amber-200 text-amber-800" : "hover:bg-amber-900 text-amber-300"
+                                  }`}
+                                  title="Copy credential"
+                                >
+                                  {isCopied ? <Check size={13} className="text-emerald-500" /> : <Copy size={13} />}
+                                </button>
+
+                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                                  {remaining}s
+                                </span>
+                              </>
+                            ) : (
+                              <>
+                                <Key size={14} className="text-indigo-400 shrink-0 group-hover:rotate-12 transition-transform" />
+                                <span className="font-semibold">{labelType}</span>
+                              </>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
                 ))}

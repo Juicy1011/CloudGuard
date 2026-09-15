@@ -119,6 +119,29 @@ def get_server_detail(server_id: int, db: Session = Depends(get_db), current_use
         containers=c_views
     )
 
+@router.get("/{server_id}/reveal-credentials")
+def reveal_server_credentials(
+    server_id: int, 
+    db: Session = Depends(get_db), 
+    current_user_id: Optional[int] = Depends(get_current_user_id)
+):
+    query = db.query(Server).filter(Server.id == server_id)
+    if current_user_id is not None:
+        query = query.filter(Server.owner_id == current_user_id)
+    server = query.first()
+    if not server:
+        raise HTTPException(status_code=404, detail="Server not found or unauthorized")
+        
+    plain_password = decrypt_credential(server.password) if server.password else None
+    plain_key = decrypt_credential(server.private_key) if server.private_key else None
+    
+    return {
+        "server_id": server.id,
+        "username": server.username,
+        "password": plain_password,
+        "private_key": plain_key
+    }
+
 @router.post("/{server_id}/chaos", response_model=ServerView)
 def trigger_chaos(server_id: int, trigger: ChaosTrigger, db: Session = Depends(get_db), current_user_id: int = Depends(get_current_user_id)):
     server = db.query(Server).filter(

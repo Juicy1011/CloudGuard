@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
-import { Server, Trash2, Plus, AlertCircle, CheckCircle, ShieldAlert, Eye, EyeOff } from "lucide-react";
-import { createServer, deleteServer } from "@/lib/api";
+import { Server, Trash2, Plus, AlertCircle, CheckCircle, ShieldAlert, Eye, EyeOff, Zap, WifiOff, KeyRound, RotateCw, Loader2 } from "lucide-react";
+import { createServer, deleteServer, triggerChaos } from "@/lib/api";
 
 interface InfrastructureViewProps {
   servers: any[];
@@ -24,6 +24,7 @@ export default function InfrastructureView({ servers, onRefresh, theme = "dark" 
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [chaosLoadingId, setChaosLoadingId] = useState<string | null>(null);
   
   const [visibleHostnames, setVisibleHostnames] = useState<Set<number>>(new Set());
 
@@ -102,6 +103,21 @@ export default function InfrastructureView({ servers, onRefresh, theme = "dark" 
       setError(err.message || "Failed to delete server");
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const handleChaosToggle = async (serverId: number, mode: string | null) => {
+    const actionKey = `${serverId}-${mode || 'reset'}`;
+    setChaosLoadingId(actionKey);
+    setError(null);
+    try {
+      await triggerChaos(serverId, mode);
+      setSuccess(`Chaos mode '${mode || 'reset'}' applied successfully.`);
+      onRefresh();
+    } catch (err: any) {
+      setError(err.message || "Failed to trigger chaos simulation");
+    } finally {
+      setChaosLoadingId(null);
     }
   };
 
@@ -266,14 +282,88 @@ export default function InfrastructureView({ servers, onRefresh, theme = "dark" 
                             </span>
                           </td>
                           <td className="py-4 px-5 text-right">
-                            <button
-                              onClick={() => handleDelete(server.id, server.name)}
-                              disabled={deletingId === server.id}
-                              className="text-slate-400 hover:text-rose-500 p-1.5 rounded-lg hover:bg-rose-500/10 transition-all duration-150 active:scale-95 disabled:opacity-50"
-                              title="Delete server"
-                            >
-                              <Trash2 size={16} />
-                            </button>
+                            <div className="flex items-center justify-end gap-1.5">
+                              <div className={`flex items-center gap-1 p-1 rounded-lg border ${
+                                isLight ? "bg-slate-100/80 border-slate-200" : "bg-slate-900/80 border-slate-800"
+                              }`}>
+                                <button
+                                  onClick={() => handleChaosToggle(server.id, "offline")}
+                                  disabled={chaosLoadingId === `${server.id}-offline`}
+                                  className={`p-1.5 rounded-md text-xs transition-all active:scale-95 ${
+                                    server.status_override === "offline"
+                                      ? "bg-rose-500 text-white font-bold shadow-xs"
+                                      : (isLight ? "text-slate-500 hover:bg-rose-50 hover:text-rose-600" : "text-slate-400 hover:bg-rose-500/20 hover:text-rose-400")
+                                  }`}
+                                  title="Simulate ICMP Outage (Offline)"
+                                >
+                                  {chaosLoadingId === `${server.id}-offline` ? (
+                                    <Loader2 size={13} className="animate-spin" />
+                                  ) : (
+                                    <WifiOff size={13} />
+                                  )}
+                                </button>
+
+                                <button
+                                  onClick={() => handleChaosToggle(server.id, "ssh_fail")}
+                                  disabled={chaosLoadingId === `${server.id}-ssh_fail`}
+                                  className={`p-1.5 rounded-md text-xs transition-all active:scale-95 ${
+                                    server.status_override === "ssh_fail"
+                                      ? "bg-amber-500 text-white font-bold shadow-xs"
+                                      : (isLight ? "text-slate-500 hover:bg-amber-50 hover:text-amber-600" : "text-slate-400 hover:bg-amber-500/20 hover:text-amber-400")
+                                  }`}
+                                  title="Simulate SSH Handshake Failure"
+                                >
+                                  {chaosLoadingId === `${server.id}-ssh_fail` ? (
+                                    <Loader2 size={13} className="animate-spin" />
+                                  ) : (
+                                    <KeyRound size={13} />
+                                  )}
+                                </button>
+
+                                <button
+                                  onClick={() => handleChaosToggle(server.id, "crash")}
+                                  disabled={chaosLoadingId === `${server.id}-crash`}
+                                  className={`p-1.5 rounded-md text-xs transition-all active:scale-95 ${
+                                    server.status_override === "crash"
+                                      ? "bg-purple-500 text-white font-bold shadow-xs"
+                                      : (isLight ? "text-slate-500 hover:bg-purple-50 hover:text-purple-600" : "text-slate-400 hover:bg-purple-500/20 hover:text-purple-400")
+                                  }`}
+                                  title="Simulate Container Disruption (Crash)"
+                                >
+                                  {chaosLoadingId === `${server.id}-crash` ? (
+                                    <Loader2 size={13} className="animate-spin" />
+                                  ) : (
+                                    <Zap size={13} />
+                                  )}
+                                </button>
+
+                                {server.status_override && (
+                                  <button
+                                    onClick={() => handleChaosToggle(server.id, null)}
+                                    disabled={chaosLoadingId === `${server.id}-reset`}
+                                    className={`p-1.5 rounded-md text-xs transition-all active:scale-95 ${
+                                      isLight ? "text-emerald-600 hover:bg-emerald-50" : "text-emerald-400 hover:bg-emerald-500/20"
+                                    }`}
+                                    title="Restore Healthy Telemetry (Reset Chaos)"
+                                  >
+                                    {chaosLoadingId === `${server.id}-reset` ? (
+                                      <Loader2 size={13} className="animate-spin" />
+                                    ) : (
+                                      <RotateCw size={13} />
+                                    )}
+                                  </button>
+                                )}
+                              </div>
+
+                              <button
+                                onClick={() => handleDelete(server.id, server.name)}
+                                disabled={deletingId === server.id}
+                                className="text-slate-400 hover:text-rose-500 p-1.5 rounded-lg hover:bg-rose-500/10 transition-all duration-150 active:scale-95 disabled:opacity-50"
+                                title="Delete server"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );

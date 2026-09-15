@@ -37,6 +37,16 @@ export async function fetchServerDetail(serverId: number) {
   return response.json();
 }
 
+export async function revealServerCredentials(serverId: number) {
+  const response = await fetch(`${getApiBaseUrl()}/servers/${serverId}/reveal-credentials`, {
+    headers: {
+      ...getAuthHeaders(),
+    },
+  });
+  if (!response.ok) throw new Error("Failed to reveal credentials");
+  return response.json();
+}
+
 export async function createServer(serverData: any) {
   const response = await fetch(`${getApiBaseUrl()}/servers/`, {
     method: "POST",
