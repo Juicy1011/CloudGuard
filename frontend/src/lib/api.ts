@@ -10,10 +10,11 @@ export function getApiBaseUrl(): string {
 
 function getAuthHeaders(): Record<string, string> {
   const user = getStoredUser();
-  if (user?.id) {
-    return { "X-User-Id": String(user.id) };
+  const headers: Record<string, string> = {};
+  if (user?.access_token) {
+    headers["Authorization"] = `Bearer ${user.access_token}`;
   }
-  return {};
+  return headers;
 }
 
 export async function fetchServers() {
@@ -154,6 +155,22 @@ export async function confirmPasswordReset(emailOrData: any, otp?: string, new_p
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
     throw new Error(err.detail || "Failed to reset password");
+  }
+  return response.json();
+}
+
+export async function deleteUserAccount(email: string) {
+  const response = await fetch(`${getApiBaseUrl()}/auth/account`, {
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ email }),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to delete account");
   }
   return response.json();
 }

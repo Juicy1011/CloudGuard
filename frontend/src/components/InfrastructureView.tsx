@@ -192,7 +192,11 @@ export default function InfrastructureView({ servers, onRefresh, theme = "dark" 
                   Monitored Host Nodes
                 </h2>
               </div>
-              <span className="text-xs text-slate-500 font-mono bg-slate-200/50 dark:bg-slate-800 px-2 py-0.5 rounded">
+              <span className={`text-xs font-mono px-2.5 py-1 rounded-md border font-medium ${
+                isLight 
+                  ? "bg-slate-100 text-slate-700 border-slate-200" 
+                  : "bg-slate-800 text-slate-300 border-slate-700"
+              }`}>
                 {servers.length} {servers.length === 1 ? "node" : "nodes"}
               </span>
             </div>

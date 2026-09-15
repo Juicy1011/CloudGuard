@@ -8,7 +8,7 @@ class Server(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
-    hostname = Column(String, nullable=False, unique=True)
+    hostname = Column(String, nullable=False, index=True)
     port = Column(Integer, default=22)
     username = Column(String, nullable=False)
     password = Column(Text, nullable=True)

@@ -1,4 +1,6 @@
 import os
+import jwt
+from datetime import datetime, timedelta, timezone
 from cryptography.fernet import Fernet
 from passlib.context import CryptContext
 from pydantic_settings import BaseSettings
@@ -7,7 +9,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str = os.getenv("SECRET_KEY", "super-secret-key-change-me")
     ENCRYPTION_KEY: str = os.getenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7
     DATABASE_URL: str = os.getenv("DATABASE_URL", "postgresql://cloudguard:cloudguard_password@localhost:5440/cloudguard")
     DEMO_MODE: str = "false"
     
@@ -15,7 +17,8 @@ class Settings(BaseSettings):
     SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
     SMTP_USER: str = os.getenv("SMTP_USER", "")
     SMTP_PASS: str = os.getenv("SMTP_PASS", "")
-    ALERT_RECEIVER: str = os.getenv("ALERT_RECEIVER", "trueyours1@gmail.com")
+    ALERT_RECEIVER: str = os.getenv("ALERT_RECEIVER", "admin@cloudguard.local")
+    PRIMARY_ADMIN_EMAIL: str = os.getenv("PRIMARY_ADMIN_EMAIL", "admin@cloudguard.local")
     
     SKYLAB_SERVER_IP: str = "127.0.0.1"
     SKYLAB_SERVER_USER: str = "admin"
@@ -40,3 +43,20 @@ def hash_password(password: str) -> str:
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
+
+def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.now(timezone.utc) + expires_delta
+    else:
+        expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+    return encoded_jwt
+
+def decode_access_token(token: str) -> dict | None:
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        return payload
+    except jwt.PyJWTError:
+        return None

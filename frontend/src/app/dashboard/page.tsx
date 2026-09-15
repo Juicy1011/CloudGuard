@@ -6,7 +6,7 @@ import Sidebar from "@/components/Sidebar";
 import StatusCard from "@/components/StatusCard";
 import MicroservicesList from "@/components/MicroservicesList";
 import InfrastructureView from "@/components/InfrastructureView";
-import { fetchServers, fetchServerDetail, fetchNotificationEmails, addNotificationEmail, deleteNotificationEmail } from "@/lib/api";
+import { fetchServers, fetchServerDetail, fetchNotificationEmails, addNotificationEmail, deleteNotificationEmail, deleteUserAccount } from "@/lib/api";
 import { getStoredUser, clearStoredUser, UserSession } from "@/lib/auth";
 import { ChevronLeft, AlertCircle, Bell, AlertTriangle, Key, Settings, CheckCircle, RefreshCw, LogOut, Search, X, User as UserIcon, Mail, Plus, Trash2, ShieldCheck, Clock, HardDrive, ArrowRight } from "lucide-react";
 
@@ -22,10 +22,28 @@ export default function DashboardRoute() {
   const [searchQuery, setSearchQuery] = useState("");
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
 
-  const [alertEmails, setAlertEmails] = useState<string[]>(["trueyours1@gmail.com"]);
+  const [alertEmails, setAlertEmails] = useState<string[]>([]);
   const [newEmailInput, setNewEmailInput] = useState("");
   const [emailNotice, setEmailNotice] = useState<string | null>(null);
   const [emailToDelete, setEmailToDelete] = useState<string | null>(null);
+
+  const [isDeleteAccountModalOpen, setIsDeleteAccountModalOpen] = useState(false);
+  const [deleteAccountLoading, setDeleteAccountLoading] = useState(false);
+  const [deleteAccountError, setDeleteAccountError] = useState<string | null>(null);
+
+  const handleDeleteAccount = async () => {
+    if (!user || user.is_protected) return;
+    setDeleteAccountLoading(true);
+    setDeleteAccountError(null);
+    try {
+      await deleteUserAccount(user.email);
+      clearStoredUser();
+      router.push("/login");
+    } catch (err: any) {
+      setDeleteAccountError(err.message || "Failed to delete account");
+      setDeleteAccountLoading(false);
+    }
+  };
 
   useEffect(() => {
     const savedTheme = localStorage.getItem("cloudguard_theme") as "dark" | "light" | null;
@@ -92,7 +110,8 @@ export default function DashboardRoute() {
 
   useEffect(() => {
     const storedUser = getStoredUser();
-    if (!storedUser) {
+    if (!storedUser || !storedUser.access_token) {
+      clearStoredUser();
       router.replace("/login");
     } else {
       setUser(storedUser);
@@ -552,8 +571,8 @@ export default function DashboardRoute() {
               </form>
 
               <div className="space-y-2">
-                {alertEmails.map((email) => {
-                  const isPrimary = email.toLowerCase() === "trueyours1@gmail.com";
+                {alertEmails.map((email, idx) => {
+                  const isPrimary = idx === 0;
                   return (
                     <div
                       key={email}
@@ -849,6 +868,44 @@ export default function DashboardRoute() {
                 </div>
               </div>
             </div>
+
+            <div className={`p-6 space-y-4 max-w-2xl border rounded-xl transition-all duration-300 ${
+              isLight ? "bg-white border-red-200/80 shadow-sm" : "bg-red-950/10 border-red-900/30"
+            }`}>
+              <div>
+                <h2 className="text-lg font-semibold flex items-center gap-2 text-red-500">
+                  <AlertTriangle size={18} />
+                  Danger Zone: Operator Account
+                </h2>
+                <p className="text-xs text-slate-500 mt-1">Permanently remove operator access credentials from the PostgreSQL database.</p>
+              </div>
+
+              <div className="flex items-center justify-between pt-2">
+                <div>
+                  <h4 className={`font-semibold text-sm ${isLight ? "text-slate-900" : "text-slate-200"}`}>
+                    Delete Operator Account
+                  </h4>
+                  <p className="text-xs text-slate-500">
+                    {user.is_protected
+                      ? "Primary admin account is protected and cannot be deleted."
+                      : "Irreversibly delete account credentials and sign out of session."}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setIsDeleteAccountModalOpen(true)}
+                  disabled={user.is_protected}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-2 ${
+                    user.is_protected
+                      ? "bg-slate-500/10 text-slate-400 border border-slate-500/20 cursor-not-allowed opacity-60"
+                      : "bg-red-600 hover:bg-red-700 text-white shadow-sm active:scale-95 cursor-pointer"
+                  }`}
+                  title={user.is_protected ? "Primary admin account is locked" : "Delete your account"}
+                >
+                  <Trash2 size={14} />
+                  {user.is_protected ? "Protected Account" : "Delete Account"}
+                </button>
+              </div>
+            </div>
           </div>
         );
 
@@ -872,6 +929,63 @@ export default function DashboardRoute() {
       <main className="flex-1 overflow-y-auto p-8">
         {renderContent()}
       </main>
+
+      {isDeleteAccountModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className={`max-w-md w-full p-6 border rounded-2xl shadow-xl transition-all ${
+            isLight ? "bg-white border-slate-200 text-slate-900" : "bg-slate-900 border-slate-800 text-slate-100"
+          }`}>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-3 bg-red-500/10 text-red-500 rounded-xl">
+                <AlertTriangle size={24} />
+              </div>
+              <div>
+                <h3 className="font-bold text-lg">Delete Account Permanently?</h3>
+                <p className="text-xs text-slate-500 font-mono">{user.email}</p>
+              </div>
+            </div>
+
+            <p className="text-sm text-slate-500 mb-6 leading-relaxed">
+              Are you sure you want to delete your account? This will permanently remove your login credentials from the database and end your active session. This action cannot be undone.
+            </p>
+
+            {deleteAccountError && (
+              <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 text-red-500 rounded-lg text-xs font-medium">
+                {deleteAccountError}
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-3">
+              <button
+                onClick={() => setIsDeleteAccountModalOpen(false)}
+                disabled={deleteAccountLoading}
+                className={`px-4 py-2 border rounded-xl text-xs font-semibold transition-all ${
+                  isLight
+                    ? "border-slate-200 hover:bg-slate-100 text-slate-600"
+                    : "border-slate-800 hover:bg-slate-800 text-slate-400"
+                }`}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteAccount}
+                disabled={deleteAccountLoading}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 active:scale-95 disabled:opacity-50 text-white text-xs font-semibold rounded-xl transition-all shadow-sm flex items-center gap-2"
+              >
+                {deleteAccountLoading ? (
+                  <>
+                    <RefreshCw size={14} className="animate-spin" /> Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 size={14} /> Yes, Delete Account
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

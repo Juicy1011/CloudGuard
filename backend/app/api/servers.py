@@ -5,25 +5,42 @@ from app.database import get_db
 from app.models.server import Server
 from app.models.health import HealthLog, ContainerLog
 from app.schemas.server import ServerCreate, ServerView, ServerDetail, HealthLogView, ContainerView, ChaosTrigger, ContainerAction
-from app.core.security import encrypt_credential, decrypt_credential, settings
+from app.core.security import encrypt_credential, decrypt_credential, decode_access_token, settings
 import io
 import paramiko
 
 router = APIRouter()
 
-def get_current_user_id(x_user_id: Optional[str] = Header(None)) -> Optional[int]:
-    if x_user_id:
-        try:
-            return int(x_user_id)
-        except ValueError:
-            return None
-    return None
+def get_current_user_id(
+    authorization: Optional[str] = Header(None)
+) -> int:
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication credentials were not provided or invalid.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    token = authorization.split(" ")[1]
+    payload = decode_access_token(token)
+    if not payload or "sub" not in payload:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired access token.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    try:
+        return int(payload["sub"])
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Malformed user identity token.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
 @router.post("/", response_model=ServerView, status_code=status.HTTP_201_CREATED)
-def create_server(server: ServerCreate, db: Session = Depends(get_db), current_user_id: Optional[int] = Depends(get_current_user_id)):
-    if current_user_id is None:
-        raise HTTPException(status_code=401, detail="Authentication required to enroll servers.")
-
+def create_server(server: ServerCreate, db: Session = Depends(get_db), current_user_id: int = Depends(get_current_user_id)):
     db_server = db.query(Server).filter(
         Server.hostname == server.hostname,
         Server.owner_id == current_user_id
@@ -49,16 +66,14 @@ def create_server(server: ServerCreate, db: Session = Depends(get_db), current_u
     return new_server
 
 @router.get("/", response_model=List[ServerView])
-def list_servers(db: Session = Depends(get_db), current_user_id: Optional[int] = Depends(get_current_user_id)):
-    target_id = current_user_id if current_user_id is not None else 1
-    return db.query(Server).filter((Server.owner_id == target_id) | (Server.owner_id == None)).all()
+def list_servers(db: Session = Depends(get_db), current_user_id: int = Depends(get_current_user_id)):
+    return db.query(Server).filter(Server.owner_id == current_user_id).all()
 
 @router.get("/{server_id}", response_model=ServerDetail)
-def get_server_detail(server_id: int, db: Session = Depends(get_db), current_user_id: Optional[int] = Depends(get_current_user_id)):
-    target_id = current_user_id if current_user_id is not None else 1
+def get_server_detail(server_id: int, db: Session = Depends(get_db), current_user_id: int = Depends(get_current_user_id)):
     server = db.query(Server).filter(
         Server.id == server_id,
-        (Server.owner_id == target_id) | (Server.owner_id == None)
+        Server.owner_id == current_user_id
     ).first()
     if not server:
         raise HTTPException(status_code=404, detail="Server not found")
@@ -105,11 +120,10 @@ def get_server_detail(server_id: int, db: Session = Depends(get_db), current_use
     )
 
 @router.post("/{server_id}/chaos", response_model=ServerView)
-def trigger_chaos(server_id: int, trigger: ChaosTrigger, db: Session = Depends(get_db), current_user_id: Optional[int] = Depends(get_current_user_id)):
-    target_id = current_user_id if current_user_id is not None else 1
+def trigger_chaos(server_id: int, trigger: ChaosTrigger, db: Session = Depends(get_db), current_user_id: int = Depends(get_current_user_id)):
     server = db.query(Server).filter(
         Server.id == server_id,
-        (Server.owner_id == target_id) | (Server.owner_id == None)
+        Server.owner_id == current_user_id
     ).first()
     if not server:
         raise HTTPException(status_code=404, detail="Server not found")
@@ -124,11 +138,10 @@ def trigger_chaos(server_id: int, trigger: ChaosTrigger, db: Session = Depends(g
     return server
 
 @router.post("/{server_id}/containers/{container_id}/action")
-def manage_container(server_id: int, container_id: str, payload: ContainerAction, db: Session = Depends(get_db), current_user_id: Optional[int] = Depends(get_current_user_id)):
-    target_id = current_user_id if current_user_id is not None else 1
+def manage_container(server_id: int, container_id: str, payload: ContainerAction, db: Session = Depends(get_db), current_user_id: int = Depends(get_current_user_id)):
     server = db.query(Server).filter(
         Server.id == server_id,
-        (Server.owner_id == target_id) | (Server.owner_id == None)
+        Server.owner_id == current_user_id
     ).first()
     if not server:
         raise HTTPException(status_code=404, detail="Server not found")
@@ -230,11 +243,10 @@ def manage_container(server_id: int, container_id: str, payload: ContainerAction
             client.close()
 
 @router.delete("/{server_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_server(server_id: int, db: Session = Depends(get_db), current_user_id: Optional[int] = Depends(get_current_user_id)):
-    target_id = current_user_id if current_user_id is not None else 1
+def delete_server(server_id: int, db: Session = Depends(get_db), current_user_id: int = Depends(get_current_user_id)):
     server = db.query(Server).filter(
         Server.id == server_id,
-        (Server.owner_id == target_id) | (Server.owner_id == None)
+        Server.owner_id == current_user_id
     ).first()
     if not server:
         raise HTTPException(status_code=404, detail="Server not found")

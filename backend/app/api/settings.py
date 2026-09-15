@@ -22,7 +22,7 @@ class EmailResponse(BaseModel):
 def get_notification_emails(db: Session = Depends(get_db)):
     emails = db.query(NotificationEmail).all()
     if not emails:
-        default_email = settings.ALERT_RECEIVER or "trueyours1@gmail.com"
+        default_email = settings.ALERT_RECEIVER or "admin@cloudguard.local"
         existing = db.query(NotificationEmail).filter(NotificationEmail.email == default_email).first()
         if not existing:
             default_entry = NotificationEmail(email=default_email)
@@ -68,7 +68,11 @@ def delete_notification_email(email_identifier: str, db: Session = Depends(get_d
             detail="Email address not found in notification list"
         )
     
-    if entry.email.lower() == "trueyours1@gmail.com" or (settings.ALERT_RECEIVER and entry.email.lower() == settings.ALERT_RECEIVER.lower()):
+    protected_emails = {
+        settings.PRIMARY_ADMIN_EMAIL.lower() if settings.PRIMARY_ADMIN_EMAIL else "admin@cloudguard.local",
+        settings.ALERT_RECEIVER.lower() if settings.ALERT_RECEIVER else "admin@cloudguard.local"
+    }
+    if entry.email.lower() in protected_emails:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Primary system recipient email is locked and cannot be deleted"

@@ -3,6 +3,8 @@ export interface UserSession {
   username: string;
   email: string;
   role?: string;
+  access_token?: string;
+  is_protected?: boolean;
 }
 
 const STORAGE_KEY = "cloudguard_user";
