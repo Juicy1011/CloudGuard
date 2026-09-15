@@ -16,6 +16,26 @@ export default function DashboardRoute() {
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [activeTab, setActiveTab] = useState("dashboard");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const urlTab = params.get("tab");
+      if (urlTab && ["dashboard", "infrastructure", "incidents", "access-control", "settings", "profile"].includes(urlTab)) {
+        setActiveTab(urlTab);
+      }
+    }
+  }, []);
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    setSelectedServer(null);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.set("tab", tab);
+      window.history.pushState({}, "", url.toString());
+    }
+  };
   const [servers, setServers] = useState<any[]>([]);
   const [selectedServer, setSelectedServer] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
@@ -209,11 +229,6 @@ export default function DashboardRoute() {
       </div>
     );
   }
-
-  const handleTabChange = (tab: string) => {
-    setActiveTab(tab);
-    setSelectedServer(null);
-  };
 
   const isUnreachable = selectedServer && selectedServer.last_status !== "online";
 
