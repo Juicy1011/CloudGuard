@@ -2,9 +2,10 @@ name: CloudGuard CI/CD Pipeline
 
 on:
   push:
-    branches: [ master, main ]
+    branches: [ master, main, "feature/*" ]
   pull_request:
     branches: [ master, main ]
+  workflow_dispatch:
 
 jobs:
   backend-checks:
