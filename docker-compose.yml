@@ -24,11 +24,11 @@ services:
       - SKYLAB_SERVER_IP=127.0.0.1
       - SKYLAB_SERVER_USER=admin
       - SKYLAB_SERVER_PASS=change-me-for-real-demo
-      - SMTP_SERVER=smtp.gmail.com
-      - SMTP_PORT=587
-      - SMTP_USER=trueyours1@gmail.com
-      - SMTP_PASS=iwipitnzapmttspq
-      - ALERT_RECEIVER=trueyours1@gmail.com
+      - SMTP_SERVER=${SMTP_SERVER:-smtp.gmail.com}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASS=${SMTP_PASS:-}
+      - ALERT_RECEIVER=${ALERT_RECEIVER:-admin@cloudguard.local}
     ports:
       - "8080:8080"
     depends_on:
@@ -46,11 +46,11 @@ services:
       - SKYLAB_SERVER_IP=127.0.0.1
       - SKYLAB_SERVER_USER=admin
       - SKYLAB_SERVER_PASS=change-me-for-real-demo
-      - SMTP_SERVER=smtp.gmail.com
-      - SMTP_PORT=587
-      - SMTP_USER=trueyours1@gmail.com
-      - SMTP_PASS=iwipitnzapmttspq
-      - ALERT_RECEIVER=trueyours1@gmail.com
+      - SMTP_SERVER=${SMTP_SERVER:-smtp.gmail.com}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASS=${SMTP_PASS:-}
+      - ALERT_RECEIVER=${ALERT_RECEIVER:-admin@cloudguard.local}
     command: ["uv", "run", "python", "-u", "app/worker.py"]
     depends_on:
       - db
