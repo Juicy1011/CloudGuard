@@ -14,6 +14,7 @@ class ServerCreate(ServerBase):
 
 class ServerView(ServerBase):
     id: int
+    owner_id: Optional[int] = None
     is_active: bool
     last_status: str
     status_override: Optional[str] = None

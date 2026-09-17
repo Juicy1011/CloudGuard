@@ -8,7 +8,7 @@ class Server(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
-    hostname = Column(String, nullable=False, unique=True)
+    hostname = Column(String, nullable=False, index=True)
     port = Column(Integer, default=22)
     username = Column(String, nullable=False)
     password = Column(Text, nullable=True)
@@ -20,5 +20,6 @@ class Server(Base):
     last_seen = Column(DateTime(timezone=True), onupdate=func.now())
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
+    owner_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
     health_logs = relationship("HealthLog", back_populates="server", cascade="all, delete-orphan")
     container_logs = relationship("ContainerLog", back_populates="server", cascade="all, delete-orphan")

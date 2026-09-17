@@ -1,3 +1,5 @@
+import { getStoredUser } from "./auth";
+
 export function getApiBaseUrl(): string {
   if (typeof window !== "undefined") {
     const host = window.location.hostname;
@@ -6,15 +8,42 @@ export function getApiBaseUrl(): string {
   return "http://127.0.0.1:8080/api";
 }
 
+function getAuthHeaders(): Record<string, string> {
+  const user = getStoredUser();
+  const headers: Record<string, string> = {};
+  if (user?.access_token) {
+    headers["Authorization"] = `Bearer ${user.access_token}`;
+  }
+  return headers;
+}
+
 export async function fetchServers() {
-  const response = await fetch(`${getApiBaseUrl()}/servers/`);
+  const response = await fetch(`${getApiBaseUrl()}/servers/`, {
+    headers: {
+      ...getAuthHeaders(),
+    },
+  });
   if (!response.ok) throw new Error("Failed to fetch servers");
   return response.json();
 }
 
 export async function fetchServerDetail(serverId: number) {
-  const response = await fetch(`${getApiBaseUrl()}/servers/${serverId}`);
+  const response = await fetch(`${getApiBaseUrl()}/servers/${serverId}`, {
+    headers: {
+      ...getAuthHeaders(),
+    },
+  });
   if (!response.ok) throw new Error("Failed to fetch server details");
+  return response.json();
+}
+
+export async function revealServerCredentials(serverId: number) {
+  const response = await fetch(`${getApiBaseUrl()}/servers/${serverId}/reveal-credentials`, {
+    headers: {
+      ...getAuthHeaders(),
+    },
+  });
+  if (!response.ok) throw new Error("Failed to reveal credentials");
   return response.json();
 }
 
@@ -23,6 +52,7 @@ export async function createServer(serverData: any) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      ...getAuthHeaders(),
     },
     body: JSON.stringify(serverData),
   });
@@ -36,6 +66,9 @@ export async function createServer(serverData: any) {
 export async function deleteServer(serverId: number) {
   const response = await fetch(`${getApiBaseUrl()}/servers/${serverId}`, {
     method: "DELETE",
+    headers: {
+      ...getAuthHeaders(),
+    },
   });
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
@@ -49,6 +82,7 @@ export async function triggerChaos(serverId: number, override: string | null) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      ...getAuthHeaders(),
     },
     body: JSON.stringify({ override }),
   });
@@ -61,6 +95,7 @@ export async function manageContainer(serverId: number, containerId: string, act
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      ...getAuthHeaders(),
     },
     body: JSON.stringify({ action }),
   });
@@ -130,6 +165,22 @@ export async function confirmPasswordReset(emailOrData: any, otp?: string, new_p
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
     throw new Error(err.detail || "Failed to reset password");
+  }
+  return response.json();
+}
+
+export async function deleteUserAccount(email: string) {
+  const response = await fetch(`${getApiBaseUrl()}/auth/account`, {
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ email }),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to delete account");
   }
   return response.json();
 }

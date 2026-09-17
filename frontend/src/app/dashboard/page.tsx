@@ -6,9 +6,9 @@ import Sidebar from "@/components/Sidebar";
 import StatusCard from "@/components/StatusCard";
 import MicroservicesList from "@/components/MicroservicesList";
 import InfrastructureView from "@/components/InfrastructureView";
-import { fetchServers, fetchServerDetail, fetchNotificationEmails, addNotificationEmail, deleteNotificationEmail } from "@/lib/api";
+import { fetchServers, fetchServerDetail, fetchNotificationEmails, addNotificationEmail, deleteNotificationEmail, deleteUserAccount, revealServerCredentials } from "@/lib/api";
 import { getStoredUser, clearStoredUser, UserSession } from "@/lib/auth";
-import { ChevronLeft, AlertCircle, Bell, AlertTriangle, Key, Settings, CheckCircle, RefreshCw, LogOut, Search, X, User as UserIcon, Mail, Plus, Trash2, ShieldCheck, Clock, HardDrive } from "lucide-react";
+import { ChevronLeft, AlertCircle, Bell, AlertTriangle, Key, Settings, CheckCircle, RefreshCw, LogOut, Search, X, User as UserIcon, Mail, Plus, Trash2, ShieldCheck, Clock, HardDrive, ArrowRight, Copy, Check, Unlock } from "lucide-react";
 
 export default function DashboardRoute() {
   const router = useRouter();
@@ -16,16 +16,105 @@ export default function DashboardRoute() {
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [activeTab, setActiveTab] = useState("dashboard");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const urlTab = params.get("tab");
+      if (urlTab && ["dashboard", "infrastructure", "incidents", "access-control", "settings", "profile"].includes(urlTab)) {
+        setActiveTab(urlTab);
+      }
+    }
+  }, []);
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    setSelectedServer(null);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.set("tab", tab);
+      window.history.pushState({}, "", url.toString());
+    }
+  };
   const [servers, setServers] = useState<any[]>([]);
   const [selectedServer, setSelectedServer] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
 
-  const [alertEmails, setAlertEmails] = useState<string[]>(["trueyours1@gmail.com"]);
+  const [alertEmails, setAlertEmails] = useState<string[]>([]);
   const [newEmailInput, setNewEmailInput] = useState("");
   const [emailNotice, setEmailNotice] = useState<string | null>(null);
   const [emailToDelete, setEmailToDelete] = useState<string | null>(null);
+
+  const [isDeleteAccountModalOpen, setIsDeleteAccountModalOpen] = useState(false);
+  const [deleteAccountLoading, setDeleteAccountLoading] = useState(false);
+  const [deleteAccountError, setDeleteAccountError] = useState<string | null>(null);
+
+  const [revealedCreds, setRevealedCreds] = useState<{ [serverId: number]: number }>({});
+  const [decryptedCreds, setDecryptedCreds] = useState<{ [serverId: number]: { password?: string; private_key?: string } }>({});
+  const [copiedCreds, setCopiedCreds] = useState<{ [serverId: number]: boolean }>({});
+
+  const handleToggleRevealCred = async (serverId: number) => {
+    if (revealedCreds[serverId] !== undefined) {
+      setRevealedCreds((prev) => {
+        const next = { ...prev };
+        delete next[serverId];
+        return next;
+      });
+      return;
+    }
+
+    try {
+      const res = await revealServerCredentials(serverId);
+      setDecryptedCreds((prev) => ({
+        ...prev,
+        [serverId]: { password: res.password, private_key: res.private_key }
+      }));
+    } catch (err) {
+      console.error("Failed to decrypt credentials:", err);
+    }
+
+    setRevealedCreds((prev) => ({ ...prev, [serverId]: 5 }));
+    
+    const intervalId = setInterval(() => {
+      setRevealedCreds((prev) => {
+        const current = prev[serverId];
+        if (current === undefined || current <= 1) {
+          clearInterval(intervalId);
+          const next = { ...prev };
+          delete next[serverId];
+          return next;
+        }
+        return { ...prev, [serverId]: current - 1 };
+      });
+    }, 1000);
+  };
+
+  const handleCopyCred = (e: React.MouseEvent, serverId: number, val: string) => {
+    e.stopPropagation();
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(val);
+    }
+    setCopiedCreds((prev) => ({ ...prev, [serverId]: true }));
+    setTimeout(() => {
+      setCopiedCreds((prev) => ({ ...prev, [serverId]: false }));
+    }, 2000);
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!user || user.is_protected) return;
+    setDeleteAccountLoading(true);
+    setDeleteAccountError(null);
+    try {
+      await deleteUserAccount(user.email);
+      clearStoredUser();
+      router.push("/login");
+    } catch (err: any) {
+      setDeleteAccountError(err.message || "Failed to delete account");
+      setDeleteAccountLoading(false);
+    }
+  };
 
   useEffect(() => {
     const savedTheme = localStorage.getItem("cloudguard_theme") as "dark" | "light" | null;
@@ -92,7 +181,8 @@ export default function DashboardRoute() {
 
   useEffect(() => {
     const storedUser = getStoredUser();
-    if (!storedUser) {
+    if (!storedUser || !storedUser.access_token) {
+      clearStoredUser();
       router.replace("/login");
     } else {
       setUser(storedUser);
@@ -139,11 +229,6 @@ export default function DashboardRoute() {
       </div>
     );
   }
-
-  const handleTabChange = (tab: string) => {
-    setActiveTab(tab);
-    setSelectedServer(null);
-  };
 
   const isUnreachable = selectedServer && selectedServer.last_status !== "online";
 
@@ -220,7 +305,16 @@ export default function DashboardRoute() {
 
         const totalNodes = servers.length;
         const onlineNodes = servers.filter(s => s.last_status === "online").length;
-        const offlineNodes = totalNodes - onlineNodes;
+        const offlineServers = totalNodes - onlineNodes;
+        
+        const exitedContainers = servers.reduce((acc, server) => {
+          if (!server.containers) return acc;
+          const stopped = server.containers.filter((c: any) => !c.status.toLowerCase().startsWith("up")).length;
+          return acc + stopped;
+        }, 0);
+
+        const totalOutages = offlineServers + exitedContainers;
+
         const avgLatency = totalNodes > 0
           ? (servers.reduce((acc, s) => acc + (s.latest_health?.latency || 0), 0) / totalNodes).toFixed(1)
           : "0.0";
@@ -313,10 +407,10 @@ export default function DashboardRoute() {
               }`}>
                 <p className={`text-xs font-semibold uppercase tracking-wider mb-2 ${isLight ? "text-rose-700/80" : "text-rose-400/90"}`}>Outage Alerts</p>
                 <div className="flex items-baseline justify-between">
-                  <span className={`text-2xl font-bold font-mono ${offlineNodes > 0 ? 'text-rose-500' : isLight ? 'text-slate-400' : 'text-slate-600'}`}>
-                    {offlineNodes}
+                  <span className={`text-2xl font-bold font-mono ${totalOutages > 0 ? 'text-rose-500' : isLight ? 'text-slate-400' : 'text-slate-600'}`}>
+                    {totalOutages}
                   </span>
-                  <div className={`p-2 rounded-xl ${offlineNodes > 0 ? (isLight ? "bg-rose-100 text-rose-600" : "bg-rose-500/20 text-rose-400") : (isLight ? "bg-slate-100 text-slate-400" : "bg-slate-800 text-slate-600")}`}>
+                  <div className={`p-2 rounded-xl ${totalOutages > 0 ? (isLight ? "bg-rose-100 text-rose-600 animate-pulse" : "bg-rose-500/20 text-rose-400 animate-pulse") : (isLight ? "bg-slate-100 text-slate-400" : "bg-slate-800 text-slate-600")}`}>
                     <AlertCircle size={18} />
                   </div>
                 </div>
@@ -399,6 +493,7 @@ export default function DashboardRoute() {
           if (server.last_status !== "online") {
             incidents.push({
               id: `server-${server.id}`,
+              serverId: server.id,
               type: "server",
               severity: "CRITICAL",
               title: `Host Down: ${server.name}`,
@@ -410,6 +505,7 @@ export default function DashboardRoute() {
             if (!c.status.toLowerCase().startsWith("up")) {
               incidents.push({
                 id: `container-${server.id}-${c.container_id}`,
+                serverId: server.id,
                 type: "container",
                 severity: "WARNING",
                 title: `Microservice Stopped: ${c.name} on ${server.name}`,
@@ -458,24 +554,36 @@ export default function DashboardRoute() {
                   {incidents.map((incident) => (
                     <div 
                       key={incident.id} 
-                      className={`border rounded-lg p-5 flex items-start gap-4 transition-colors ${
+                      onClick={() => {
+                        const targetServer = servers.find((s) => s.id === incident.serverId);
+                        if (targetServer) {
+                          setSelectedServer(targetServer);
+                          setActiveTab("dashboard");
+                        }
+                      }}
+                      className={`group border rounded-xl p-5 flex items-start gap-4 transition-all cursor-pointer ${
                         incident.severity === "CRITICAL" 
-                          ? "bg-red-500/5 border-red-500/20" 
-                          : "bg-amber-500/5 border-amber-500/20"
+                          ? (isLight ? "bg-red-50/60 border-red-200 hover:border-red-400 hover:shadow-md" : "bg-red-500/5 border-red-500/20 hover:border-red-500/40 hover:bg-red-500/10") 
+                          : (isLight ? "bg-amber-50/60 border-amber-200 hover:border-amber-400 hover:shadow-md" : "bg-amber-500/5 border-amber-500/20 hover:border-amber-500/40 hover:bg-amber-500/10")
                       }`}
                     >
-                      <div className={`p-2.5 rounded-md ${
+                      <div className={`p-2.5 rounded-xl transition-all group-hover:scale-105 ${
                         incident.severity === "CRITICAL" ? "bg-red-500/10 text-red-500" : "bg-amber-500/10 text-amber-500"
                       }`}>
                         <AlertTriangle size={20} />
                       </div>
                       <div className="flex-1 space-y-1">
                         <div className="flex items-center justify-between">
-                          <span className={`text-xs font-semibold tracking-wider px-2 py-0.5 rounded ${
-                            incident.severity === "CRITICAL" ? "bg-red-500/10 text-red-500" : "bg-amber-500/10 text-amber-500"
-                          }`}>
-                            {incident.severity}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className={`text-xs font-semibold tracking-wider px-2 py-0.5 rounded ${
+                              incident.severity === "CRITICAL" ? "bg-red-500/10 text-red-500" : "bg-amber-500/10 text-amber-500"
+                            }`}>
+                              {incident.severity}
+                            </span>
+                            <span className="text-xs text-blue-500 font-medium opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                              Inspect Host & Microservice <ArrowRight size={12} />
+                            </span>
+                          </div>
                           <span className="text-xs text-slate-500 font-mono">{incident.time}</span>
                         </div>
                         <h4 className={`font-bold ${isLight ? "text-slate-900" : "text-slate-100"}`}>{incident.title}</h4>
@@ -529,8 +637,8 @@ export default function DashboardRoute() {
               </form>
 
               <div className="space-y-2">
-                {alertEmails.map((email) => {
-                  const isPrimary = email.toLowerCase() === "trueyours1@gmail.com";
+                {alertEmails.map((email, idx) => {
+                  const isPrimary = idx === 0;
                   return (
                     <div
                       key={email}
@@ -733,11 +841,53 @@ export default function DashboardRoute() {
                         <span className="text-slate-500">Status</span>
                         <p className="font-medium text-emerald-500">Vaulted & Secure</p>
                       </div>
-                      <span className={`px-3 py-1 rounded text-xs font-mono ${
-                        isLight ? "bg-slate-200 text-slate-700" : "bg-slate-800 text-slate-400"
-                      }`}>
-                        {server.private_key ? "PRIVATE_KEY" : "PASSWORD_AUTH"}
-                      </span>
+                      {(() => {
+                        const remaining = revealedCreds[server.id];
+                        const isRevealed = remaining !== undefined;
+                        const isCopied = copiedCreds[server.id];
+                        const decrypted = decryptedCreds[server.id];
+                        const credText = decrypted ? (decrypted.password || decrypted.private_key || "Vaulted Secret") : (server.private_key || server.password || "••••••••");
+                        const labelType = server.private_key ? "PRIVATE_KEY" : "PASSWORD_AUTH";
+
+                        return (
+                          <div 
+                            onClick={() => handleToggleRevealCred(server.id)}
+                            className={`group relative cursor-pointer select-none rounded-xl px-4 py-2 text-xs font-mono transition-all duration-500 border shadow-xs flex items-center gap-2.5 ${
+                              isRevealed 
+                                ? (isLight ? "bg-amber-50 border-amber-300 text-amber-900 shadow-amber-500/10" : "bg-amber-950/40 border-amber-500/40 text-amber-200 shadow-amber-500/10")
+                                : (isLight ? "bg-slate-200/80 hover:bg-slate-300/80 border-slate-300 text-slate-700" : "bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-300")
+                            }`}
+                            title={isRevealed ? "Click to lock credential" : "Click to reveal credential for 5 seconds"}
+                          >
+                            {isRevealed ? (
+                              <>
+                                <Unlock size={14} className="text-amber-500 shrink-0" />
+                                <span className="font-bold tracking-wider max-w-[140px] truncate">{credText}</span>
+                                
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleCopyCred(e, server.id, credText)}
+                                  className={`p-1 rounded transition-colors ${
+                                    isLight ? "hover:bg-amber-200 text-amber-800" : "hover:bg-amber-900 text-amber-300"
+                                  }`}
+                                  title="Copy credential"
+                                >
+                                  {isCopied ? <Check size={13} className="text-emerald-500" /> : <Copy size={13} />}
+                                </button>
+
+                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                                  {remaining}s
+                                </span>
+                              </>
+                            ) : (
+                              <>
+                                <Key size={14} className="text-indigo-400 shrink-0 group-hover:rotate-12 transition-transform" />
+                                <span className="font-semibold">{labelType}</span>
+                              </>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
                 ))}
@@ -826,6 +976,44 @@ export default function DashboardRoute() {
                 </div>
               </div>
             </div>
+
+            <div className={`p-6 space-y-4 max-w-2xl border rounded-xl transition-all duration-300 ${
+              isLight ? "bg-white border-red-200/80 shadow-sm" : "bg-red-950/10 border-red-900/30"
+            }`}>
+              <div>
+                <h2 className="text-lg font-semibold flex items-center gap-2 text-red-500">
+                  <AlertTriangle size={18} />
+                  Danger Zone: Operator Account
+                </h2>
+                <p className="text-xs text-slate-500 mt-1">Permanently remove operator access credentials from the PostgreSQL database.</p>
+              </div>
+
+              <div className="flex items-center justify-between pt-2">
+                <div>
+                  <h4 className={`font-semibold text-sm ${isLight ? "text-slate-900" : "text-slate-200"}`}>
+                    Delete Operator Account
+                  </h4>
+                  <p className="text-xs text-slate-500">
+                    {user.is_protected
+                      ? "Primary admin account is protected and cannot be deleted."
+                      : "Irreversibly delete account credentials and sign out of session."}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setIsDeleteAccountModalOpen(true)}
+                  disabled={user.is_protected}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-2 ${
+                    user.is_protected
+                      ? "bg-slate-500/10 text-slate-400 border border-slate-500/20 cursor-not-allowed opacity-60"
+                      : "bg-red-600 hover:bg-red-700 text-white shadow-sm active:scale-95 cursor-pointer"
+                  }`}
+                  title={user.is_protected ? "Primary admin account is locked" : "Delete your account"}
+                >
+                  <Trash2 size={14} />
+                  {user.is_protected ? "Protected Account" : "Delete Account"}
+                </button>
+              </div>
+            </div>
           </div>
         );
 
@@ -849,6 +1037,63 @@ export default function DashboardRoute() {
       <main className="flex-1 overflow-y-auto p-8">
         {renderContent()}
       </main>
+
+      {isDeleteAccountModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className={`max-w-md w-full p-6 border rounded-2xl shadow-xl transition-all ${
+            isLight ? "bg-white border-slate-200 text-slate-900" : "bg-slate-900 border-slate-800 text-slate-100"
+          }`}>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-3 bg-red-500/10 text-red-500 rounded-xl">
+                <AlertTriangle size={24} />
+              </div>
+              <div>
+                <h3 className="font-bold text-lg">Delete Account Permanently?</h3>
+                <p className="text-xs text-slate-500 font-mono">{user.email}</p>
+              </div>
+            </div>
+
+            <p className="text-sm text-slate-500 mb-6 leading-relaxed">
+              Are you sure you want to delete your account? This will permanently remove your login credentials from the database and end your active session. This action cannot be undone.
+            </p>
+
+            {deleteAccountError && (
+              <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 text-red-500 rounded-lg text-xs font-medium">
+                {deleteAccountError}
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-3">
+              <button
+                onClick={() => setIsDeleteAccountModalOpen(false)}
+                disabled={deleteAccountLoading}
+                className={`px-4 py-2 border rounded-xl text-xs font-semibold transition-all ${
+                  isLight
+                    ? "border-slate-200 hover:bg-slate-100 text-slate-600"
+                    : "border-slate-800 hover:bg-slate-800 text-slate-400"
+                }`}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteAccount}
+                disabled={deleteAccountLoading}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 active:scale-95 disabled:opacity-50 text-white text-xs font-semibold rounded-xl transition-all shadow-sm flex items-center gap-2"
+              >
+                {deleteAccountLoading ? (
+                  <>
+                    <RefreshCw size={14} className="animate-spin" /> Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 size={14} /> Yes, Delete Account
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

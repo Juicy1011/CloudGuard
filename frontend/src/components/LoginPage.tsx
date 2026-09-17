@@ -23,7 +23,7 @@ function Input({ className, type, ...props }: React.ComponentProps<"input">) {
 }
 
 interface LoginPageProps {
-  onLoginSuccess: (user: { username: string; email: string }, rememberMe: boolean) => void;
+  onLoginSuccess: (user: { id?: number; username: string; email: string; access_token?: string; is_protected?: boolean }, rememberMe: boolean) => void;
 }
 
 type AuthMode = 'login' | 'signup' | 'forgot' | 'reset';
@@ -74,10 +74,10 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
     try {
       if (mode === 'signup') {
         const user = await registerUser(username || email.split('@')[0], email, password);
-        onLoginSuccess({ username: user.username, email: user.email }, rememberMe);
+        onLoginSuccess({ id: user.id, username: user.username, email: user.email, access_token: user.access_token, is_protected: user.is_protected }, rememberMe);
       } else if (mode === 'login') {
         const user = await loginUser(email, password);
-        onLoginSuccess({ username: user.username, email: user.email }, rememberMe);
+        onLoginSuccess({ id: user.id, username: user.username, email: user.email, access_token: user.access_token, is_protected: user.is_protected }, rememberMe);
       } else if (mode === 'forgot') {
         const res = await requestPasswordReset(email);
         setSuccessMessage(res.message || "Verification OTP code sent to your email!");

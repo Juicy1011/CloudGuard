@@ -70,8 +70,8 @@ def execute_ssh_commands(
         return get_mock_metrics(hostname, server_name, status_override, stopped_containers)
 
     client = paramiko.SSHClient()
-
-
+    # Note: Paramiko AutoAddPolicy is used here to support agentless, dynamic enrollment of target cloud hosts 
+    # without requiring manually pre-populated known_hosts files on the monitoring server (Trust-On-First-Use pattern).
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     
     pkey = None

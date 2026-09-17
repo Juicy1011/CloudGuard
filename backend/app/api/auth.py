@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from app.database import get_db
 from app.models.user import User
-from app.core.security import hash_password, verify_password
+from app.core.security import hash_password, verify_password, create_access_token, settings
 from app.core.incident import send_otp_email
 
 router = APIRouter()
@@ -31,9 +31,19 @@ class UserResponse(BaseModel):
     id: int
     username: str
     email: str
+    access_token: str
+    token_type: str = "bearer"
+    is_protected: bool = False
 
     class Config:
         from_attributes = True
+
+def check_is_protected(email: str) -> bool:
+    protected = {
+        settings.PRIMARY_ADMIN_EMAIL.lower() if settings.PRIMARY_ADMIN_EMAIL else "admin@cloudguard.local",
+        settings.ALERT_RECEIVER.lower() if settings.ALERT_RECEIVER else "admin@cloudguard.local"
+    }
+    return email.lower() in protected
 
 @router.post("/register", response_model=UserResponse)
 def register(user_in: UserRegister, db: Session = Depends(get_db)):
@@ -54,7 +64,16 @@ def register(user_in: UserRegister, db: Session = Depends(get_db)):
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
-    return new_user
+
+    token = create_access_token({"sub": str(new_user.id), "email": new_user.email})
+    return UserResponse(
+        id=new_user.id,
+        username=new_user.username,
+        email=new_user.email,
+        access_token=token,
+        token_type="bearer",
+        is_protected=check_is_protected(new_user.email)
+    )
 
 @router.post("/login", response_model=UserResponse)
 def login(credentials: UserLogin, db: Session = Depends(get_db)):
@@ -66,7 +85,16 @@ def login(credentials: UserLogin, db: Session = Depends(get_db)):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials"
         )
-    return user
+
+    token = create_access_token({"sub": str(user.id), "email": user.email})
+    return UserResponse(
+        id=user.id,
+        username=user.username,
+        email=user.email,
+        access_token=token,
+        token_type="bearer",
+        is_protected=check_is_protected(user.email)
+    )
 
 @router.post("/forgot-password")
 def forgot_password(req: ForgotPasswordRequest, db: Session = Depends(get_db)):
@@ -109,3 +137,29 @@ def reset_password(req: ResetPasswordRequest, db: Session = Depends(get_db)):
     db.commit()
 
     return {"message": "Password successfully updated! You can now log in."}
+
+class DeleteAccountRequest(BaseModel):
+    email: str
+
+@router.delete("/account")
+def delete_account(req: DeleteAccountRequest, db: Session = Depends(get_db)):
+    protected_emails = {
+        settings.PRIMARY_ADMIN_EMAIL.lower() if settings.PRIMARY_ADMIN_EMAIL else "admin@cloudguard.local",
+        settings.ALERT_RECEIVER.lower() if settings.ALERT_RECEIVER else "admin@cloudguard.local"
+    }
+    if req.email.lower() in protected_emails:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Primary administrator account ({req.email}) is protected and cannot be deleted."
+        )
+    
+    user = db.query(User).filter(User.email == req.email).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Account not found"
+        )
+    
+    db.delete(user)
+    db.commit()
+    return {"message": "Account successfully deleted."}

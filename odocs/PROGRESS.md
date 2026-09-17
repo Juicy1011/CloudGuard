@@ -38,13 +38,9 @@ CloudGuard is a unified, SSH-based cloud monitoring and management system design
 - [x] Set up transactional email client (SMTP / Resend / Mailgun)
 - [x] Implement email generation & delivery for active incidents
 
-### Phase 5: Verification & Production Ready
-- [x] Conduct end-to-end local integration testing
-- [x] Run linting, formating, and type checking across frontend and backend
-- [x] Implement configurable "Demo Mode" for reliable school/presentation staging
-- [x] Add externalized mock data for custom microservices visualization
-- [x] Improve microservices health visualization with status-aware styling and icons
-- [x] Implement remote container lifecycle management (Stop/Start/Restart) with state-aware action buttons
-- [x] Generate comprehensive Chapter 4 (System Analysis and Design, DFDs, Context Diagrams, and Mermaid ERD) documentation
+### Phase 6: Multi-Tenant & Authentication Scoping
+- [x] Implement `owner_id` foreign key isolation on `Server` model
+- [x] Pass and parse `X-User-Id` header across backend API endpoints and frontend API client
+- [x] Support clean, user-scoped server workspace for newly registered email users while retaining global seeded default servers
 
 

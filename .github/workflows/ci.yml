@@ -2,138 +2,81 @@ name: CloudGuard CI/CD Pipeline
 
 on:
   push:
-    branches: [ master, main ]
+    branches: [ master, main, "feature/*" ]
   pull_request:
     branches: [ master, main ]
+  workflow_dispatch:
 
 jobs:
-<<<<<<< HEAD
   backend-checks:
     name: Backend Lint & Unit Tests
     runs-on: ubuntu-latest
-
-=======
-  backend-test:
-    name: Backend Lint & Unit Tests
-    runs-on: ubuntu-latest
->>>>>>> master
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-<<<<<<< HEAD
       - name: Install uv
         uses: astral-sh/setup-uv@v5
         with:
           version: "latest"
           enable-cache: true
 
-=======
->>>>>>> master
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
-
-<<<<<<< HEAD
-      - name: Install Backend Dependencies
-        run: |
-          cd backend
-          uv sync
-=======
-      - name: Install uv
-        uses: astral-sh/setup-uv@v3
-        with:
-          version: "latest"
+          python-version: "3.13"
 
       - name: Install Backend Dependencies
         run: |
           cd backend
           uv sync --dev
->>>>>>> master
 
       - name: Run Backend Unit Tests
         env:
           PYTHONPATH: .
         run: |
           cd backend
-<<<<<<< HEAD
-          PYTHONPATH=. uv run pytest tests/test_metrics.py
+          uv run pytest tests/test_metrics.py
 
   frontend-checks:
     name: Frontend Lint & Build
     runs-on: ubuntu-latest
-
-=======
-          uv run pytest
-
-  frontend-build:
-    name: Frontend Lint & Build
-    runs-on: ubuntu-latest
->>>>>>> master
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-
-<<<<<<< HEAD
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: "pnpm"
-          cache-dependency-path: frontend/pnpm-lock.yaml
-=======
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
           version: "latest"
->>>>>>> master
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+          cache-dependency-path: frontend/pnpm-lock.yaml
 
       - name: Install Frontend Dependencies
         run: |
-          cd frontend
+          cd backend || true
+          cd ../frontend
           pnpm install --frozen-lockfile
 
-<<<<<<< HEAD
-      - name: Build Next.js Dashboard
-=======
       - name: Build Next.js Production Bundle
->>>>>>> master
         run: |
           cd frontend
           pnpm build
 
-<<<<<<< HEAD
   docker-build-check:
     name: Docker Stack Build Verification
     runs-on: ubuntu-latest
-
-=======
-  docker-compose-check:
-    name: Docker Stack Build Verification
-    runs-on: ubuntu-latest
->>>>>>> master
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-<<<<<<< HEAD
       - name: Validate Docker Compose Configuration
         run: docker compose config
 
       - name: Build Docker Stack
         run: docker compose build
-=======
-      - name: Validate Docker Compose Config
-        run: docker compose config
->>>>>>> master

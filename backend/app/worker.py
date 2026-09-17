@@ -11,19 +11,6 @@ from app.core.metrics import parse_all_metrics
 from app.core.security import decrypt_credential
 from app.core.incident import send_incident_email
 
-import asyncio
-import time
-from sqlalchemy import func
-from sqlalchemy.orm import Session
-from app.database import SessionLocal
-from app.models.server import Server
-from app.models.health import HealthLog, ContainerLog
-from app.core.probe import ping_host
-from app.core.executor import execute_ssh_commands
-from app.core.metrics import parse_all_metrics
-from app.core.security import decrypt_credential
-from app.core.incident import send_incident_email
-
 async def monitor_servers():
     print("Worker started. Monitoring loop initiated...")
     container_states = {}
