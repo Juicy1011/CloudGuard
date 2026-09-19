@@ -35,7 +35,8 @@ async def monitor_servers():
                             error="Host is unreachable via ICMP ping.",
                             severity="CRITICAL",
                             action_hint="Verify the host is powered on and check firewall rules for ICMP/Ping traffic.",
-                            db_session=db
+                            db_session=db,
+                            owner_id=server.owner_id
                         )
                     db.commit()
                     continue
@@ -92,7 +93,8 @@ async def monitor_servers():
                                 component_name=container["name"],
                                 severity="WARNING",
                                 action_hint="Inspect container logs on the host or attempt a 'Restart' via the dashboard.",
-                                db_session=db
+                                db_session=db,
+                                owner_id=server.owner_id
                             )
                         
                         container_states[server.id][c_id] = is_running
@@ -120,7 +122,8 @@ async def monitor_servers():
                             error=f"SSH Handshake Failure: {metrics.get('error')}",
                             severity="CRITICAL",
                             action_hint="Check SSH credentials in the Access Control Vault and ensure Port 22 is open.",
-                            db_session=db
+                            db_session=db,
+                            owner_id=server.owner_id
                         )
 
                 db.commit()

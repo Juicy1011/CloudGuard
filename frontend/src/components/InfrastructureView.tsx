@@ -24,6 +24,7 @@ export default function InfrastructureView({ servers, onRefresh, theme = "dark" 
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [serverToDelete, setServerToDelete] = useState<{ id: number; name: string; hostname?: string } | null>(null);
   const [chaosLoadingId, setChaosLoadingId] = useState<string | null>(null);
   
   const [visibleHostnames, setVisibleHostnames] = useState<Set<number>>(new Set());
@@ -87,10 +88,6 @@ export default function InfrastructureView({ servers, onRefresh, theme = "dark" 
   };
 
   const handleDelete = async (serverId: number, serverName: string) => {
-    if (!confirm(`Are you sure you want to delete server "${serverName}"? This will stop monitoring.`)) {
-      return;
-    }
-
     setDeletingId(serverId);
     setError(null);
     setSuccess(null);
@@ -103,6 +100,7 @@ export default function InfrastructureView({ servers, onRefresh, theme = "dark" 
       setError(err.message || "Failed to delete server");
     } finally {
       setDeletingId(null);
+      setServerToDelete(null);
     }
   };
 
@@ -356,7 +354,7 @@ export default function InfrastructureView({ servers, onRefresh, theme = "dark" 
                               </div>
 
                               <button
-                                onClick={() => handleDelete(server.id, server.name)}
+                                onClick={() => setServerToDelete(server)}
                                 disabled={deletingId === server.id}
                                 className="text-slate-400 hover:text-rose-500 p-1.5 rounded-lg hover:bg-rose-500/10 transition-all duration-150 active:scale-95 disabled:opacity-50"
                                 title="Delete server"
@@ -528,6 +526,61 @@ export default function InfrastructureView({ servers, onRefresh, theme = "dark" 
           </div>
         </div>
       </div>
+
+      {serverToDelete && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className={`max-w-md w-full p-6 border rounded-2xl shadow-2xl transition-all ${
+            isLight ? "bg-white border-slate-200 text-slate-900" : "bg-slate-900 border-slate-800 text-slate-100"
+          }`}>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-3 bg-rose-500/10 text-rose-500 rounded-xl">
+                <Trash2 size={24} />
+              </div>
+              <div>
+                <h3 className="font-bold text-lg">Delete Host Instance?</h3>
+                <p className="text-xs text-slate-500 font-mono">{serverToDelete.name} ({serverToDelete.hostname})</p>
+              </div>
+            </div>
+
+            <p className="text-sm text-slate-500 mb-6 leading-relaxed">
+              Are you sure you want to delete this host server from your fleet inventory? This will permanently stop monitoring and remove all recorded health telemetry logs for this host.
+            </p>
+
+            <div className="flex items-center justify-end gap-3">
+              <button
+                onClick={() => setServerToDelete(null)}
+                disabled={deletingId === serverToDelete.id}
+                className={`px-4 py-2 border rounded-xl text-xs font-semibold transition-all ${
+                  isLight
+                    ? "border-slate-200 hover:bg-slate-100 text-slate-600"
+                    : "border-slate-800 hover:bg-slate-800 text-slate-400"
+                }`}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  const s = serverToDelete;
+                  setServerToDelete(null);
+                  handleDelete(s.id, s.name);
+                }}
+                disabled={deletingId === serverToDelete.id}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 active:scale-95 disabled:opacity-50 text-white text-xs font-semibold rounded-xl transition-all shadow-sm flex items-center gap-2"
+              >
+                {deletingId === serverToDelete.id ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" /> Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 size={14} /> Yes, Delete Server
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

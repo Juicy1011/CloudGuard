@@ -15,10 +15,10 @@ class Settings(BaseSettings):
     
     SMTP_SERVER: str = os.getenv("SMTP_SERVER", "smtp.gmail.com")
     SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
-    SMTP_USER: str = os.getenv("SMTP_USER", "")
-    SMTP_PASS: str = os.getenv("SMTP_PASS", "")
-    ALERT_RECEIVER: str = os.getenv("ALERT_RECEIVER", "admin@cloudguard.local")
-    PRIMARY_ADMIN_EMAIL: str = os.getenv("PRIMARY_ADMIN_EMAIL", "admin@cloudguard.local")
+    SMTP_USER: str = os.getenv("SMTP_USER", "cloudguard2026@gmail.com")
+    SMTP_PASS: str = os.getenv("SMTP_PASS", "quayzjogwfovqesj")
+    ALERT_RECEIVER: str = os.getenv("ALERT_RECEIVER", "cloudguard2026@gmail.com")
+    PRIMARY_ADMIN_EMAIL: str = os.getenv("PRIMARY_ADMIN_EMAIL", "cloudguard2026@gmail.com")
     
     SKYLAB_SERVER_IP: str = "127.0.0.1"
     SKYLAB_SERVER_USER: str = "admin"

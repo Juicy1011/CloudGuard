@@ -74,7 +74,10 @@ export async function deleteServer(serverId: number) {
     const err = await response.json().catch(() => ({}));
     throw new Error(err.detail || "Failed to delete server");
   }
-  return response.json();
+  if (response.status === 204) {
+    return { success: true };
+  }
+  return response.json().catch(() => ({ success: true }));
 }
 
 export async function triggerChaos(serverId: number, override: string | null) {
@@ -186,7 +189,11 @@ export async function deleteUserAccount(email: string) {
 }
 
 export async function fetchNotificationEmails() {
-  const response = await fetch(`${getApiBaseUrl()}/settings/emails`);
+  const response = await fetch(`${getApiBaseUrl()}/settings/emails`, {
+    headers: {
+      ...getAuthHeaders(),
+    },
+  });
   if (!response.ok) throw new Error("Failed to fetch alert recipient emails");
   return response.json();
 }
@@ -196,6 +203,7 @@ export async function addNotificationEmail(email: string) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      ...getAuthHeaders(),
     },
     body: JSON.stringify({ email }),
   });
@@ -209,6 +217,9 @@ export async function addNotificationEmail(email: string) {
 export async function deleteNotificationEmail(identifier: string | number) {
   const response = await fetch(`${getApiBaseUrl()}/settings/emails/${encodeURIComponent(String(identifier))}`, {
     method: "DELETE",
+    headers: {
+      ...getAuthHeaders(),
+    },
   });
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
