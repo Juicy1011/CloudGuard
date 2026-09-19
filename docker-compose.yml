@@ -26,9 +26,10 @@ services:
       - SKYLAB_SERVER_PASS=change-me-for-real-demo
       - SMTP_SERVER=${SMTP_SERVER:-smtp.gmail.com}
       - SMTP_PORT=${SMTP_PORT:-587}
-      - SMTP_USER=${SMTP_USER:-}
-      - SMTP_PASS=${SMTP_PASS:-}
-      - ALERT_RECEIVER=${ALERT_RECEIVER:-admin@cloudguard.local}
+      - SMTP_USER=${SMTP_USER:-cloudguard2026@gmail.com}
+      - SMTP_PASS=${SMTP_PASS:-quayzjogwfovqesj}
+      - ALERT_RECEIVER=${ALERT_RECEIVER:-cloudguard2026@gmail.com}
+      - PRIMARY_ADMIN_EMAIL=${PRIMARY_ADMIN_EMAIL:-cloudguard2026@gmail.com}
     ports:
       - "8080:8080"
     depends_on:
@@ -48,9 +49,10 @@ services:
       - SKYLAB_SERVER_PASS=change-me-for-real-demo
       - SMTP_SERVER=${SMTP_SERVER:-smtp.gmail.com}
       - SMTP_PORT=${SMTP_PORT:-587}
-      - SMTP_USER=${SMTP_USER:-}
-      - SMTP_PASS=${SMTP_PASS:-}
-      - ALERT_RECEIVER=${ALERT_RECEIVER:-admin@cloudguard.local}
+      - SMTP_USER=${SMTP_USER:-cloudguard2026@gmail.com}
+      - SMTP_PASS=${SMTP_PASS:-quayzjogwfovqesj}
+      - ALERT_RECEIVER=${ALERT_RECEIVER:-cloudguard2026@gmail.com}
+      - PRIMARY_ADMIN_EMAIL=${PRIMARY_ADMIN_EMAIL:-cloudguard2026@gmail.com}
     command: ["uv", "run", "python", "-u", "app/worker.py"]
     depends_on:
       - db

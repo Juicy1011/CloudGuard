@@ -5,18 +5,22 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from app.core.security import settings
 
-def fetch_notification_emails(db_session=None) -> list[str]:
+def fetch_notification_emails(db_session=None, owner_id: Optional[int] = None) -> list[str]:
     recipients = []
     if db_session:
         try:
             from app.models.setting import NotificationEmail
-            db_emails = db_session.query(NotificationEmail).all()
+            query = db_session.query(NotificationEmail)
+            if owner_id is not None:
+                query = query.filter(NotificationEmail.owner_id == owner_id)
+            db_emails = query.all()
             recipients = [e.email for e in db_emails if e.email and e.email.strip()]
         except Exception as e:
             print(f"DEBUG: Could not query NotificationEmail table: {e}")
-    if not recipients:
-        raw = settings.ALERT_RECEIVER or "admin@example.com"
-        recipients = [e.strip() for e in raw.split(",") if e.strip()]
+            
+    default_email = settings.ALERT_RECEIVER or "cloudguard2026@gmail.com"
+    if default_email and default_email not in recipients:
+        recipients.append(default_email)
     return recipients
 
 def send_incident_email(
@@ -28,14 +32,15 @@ def send_incident_email(
     severity: str = "CRITICAL",
     action_hint: Optional[str] = None,
     receiver_email: Optional[str] = None,
-    db_session = None
+    db_session = None,
+    owner_id: Optional[int] = None
 ):
     sender_email = settings.SMTP_USER or "alerts@cloudguard.io"
     
     if receiver_email:
         target_emails = [e.strip() for e in receiver_email.split(",") if e.strip()]
     else:
-        target_emails = fetch_notification_emails(db_session)
+        target_emails = fetch_notification_emails(db_session, owner_id=owner_id)
     
     if not target_emails:
         print("DEBUG: No alert recipients configured.")
@@ -143,3 +148,5 @@ def send_otp_email(receiver_email: str, otp_code: str):
             print(f"INFO: Reset OTP email successfully delivered to {receiver_email}")
         except Exception as e:
             print(f"ERROR: Failed to deliver OTP email via SMTP: {e}")
+    else:
+        print(f"WARNING: SMTP_USER or SMTP_PASS not configured. OTP [{otp_code}] generated but email not sent via SMTP.")

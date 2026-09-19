@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr
-from typing import List
+from typing import List, Optional
 from app.database import get_db
 from app.models.setting import NotificationEmail
 from app.core.security import settings
+from app.api.servers import get_current_user_id
 
 router = APIRouter()
 
@@ -19,21 +20,12 @@ class EmailResponse(BaseModel):
         from_attributes = True
 
 @router.get("/emails", response_model=List[EmailResponse])
-def get_notification_emails(db: Session = Depends(get_db)):
-    emails = db.query(NotificationEmail).all()
-    if not emails:
-        default_email = settings.ALERT_RECEIVER or "admin@cloudguard.local"
-        existing = db.query(NotificationEmail).filter(NotificationEmail.email == default_email).first()
-        if not existing:
-            default_entry = NotificationEmail(email=default_email)
-            db.add(default_entry)
-            db.commit()
-            db.refresh(default_entry)
-            emails = [default_entry]
+def get_notification_emails(db: Session = Depends(get_db), current_user_id: int = Depends(get_current_user_id)):
+    emails = db.query(NotificationEmail).filter(NotificationEmail.owner_id == current_user_id).all()
     return emails
 
 @router.post("/emails", response_model=EmailResponse)
-def add_notification_email(payload: EmailCreate, db: Session = Depends(get_db)):
+def add_notification_email(payload: EmailCreate, db: Session = Depends(get_db), current_user_id: int = Depends(get_current_user_id)):
     cleaned_email = payload.email.strip().lower()
     if not cleaned_email or "@" not in cleaned_email:
         raise HTTPException(
@@ -41,41 +33,40 @@ def add_notification_email(payload: EmailCreate, db: Session = Depends(get_db)):
             detail="Invalid email address format"
         )
     
-    existing = db.query(NotificationEmail).filter(NotificationEmail.email == cleaned_email).first()
+    existing = db.query(NotificationEmail).filter(
+        NotificationEmail.email == cleaned_email,
+        NotificationEmail.owner_id == current_user_id
+    ).first()
     if existing:
         return existing
         
-    entry = NotificationEmail(email=cleaned_email)
+    entry = NotificationEmail(email=cleaned_email, owner_id=current_user_id)
     db.add(entry)
     db.commit()
     db.refresh(entry)
     return entry
 
 @router.delete("/emails/{email_identifier:path}")
-def delete_notification_email(email_identifier: str, db: Session = Depends(get_db)):
+def delete_notification_email(email_identifier: str, db: Session = Depends(get_db), current_user_id: int = Depends(get_current_user_id)):
     identifier = email_identifier.strip().lower()
     
     entry = None
     if identifier.isdigit():
-        entry = db.query(NotificationEmail).filter(NotificationEmail.id == int(identifier)).first()
+        entry = db.query(NotificationEmail).filter(
+            NotificationEmail.id == int(identifier),
+            NotificationEmail.owner_id == current_user_id
+        ).first()
     
     if not entry:
-        entry = db.query(NotificationEmail).filter(NotificationEmail.email == identifier).first()
+        entry = db.query(NotificationEmail).filter(
+            NotificationEmail.email == identifier,
+            NotificationEmail.owner_id == current_user_id
+        ).first()
         
     if not entry:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Email address not found in notification list"
-        )
-    
-    protected_emails = {
-        settings.PRIMARY_ADMIN_EMAIL.lower() if settings.PRIMARY_ADMIN_EMAIL else "admin@cloudguard.local",
-        settings.ALERT_RECEIVER.lower() if settings.ALERT_RECEIVER else "admin@cloudguard.local"
-    }
-    if entry.email.lower() in protected_emails:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Primary system recipient email is locked and cannot be deleted"
         )
 
     removed_email = entry.email

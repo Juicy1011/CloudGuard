@@ -437,13 +437,31 @@ export default function DashboardRoute() {
                   <div key={i} className={`h-64 rounded-xl ${isLight ? "bg-slate-200" : "bg-slate-800/50"}`} />
                 ))}
               </div>
+            ) : servers.length === 0 ? (
+              <div className={`p-12 border border-dashed rounded-xl text-center space-y-3 ${
+                isLight ? "border-slate-200 bg-white" : "border-slate-800 bg-slate-900/30"
+              }`}>
+                <HardDrive size={36} className="mx-auto text-blue-500 opacity-80" />
+                <h3 className={`font-semibold text-lg ${isLight ? "text-slate-800" : "text-slate-200"}`}>
+                  No Monitored Servers Enrolled
+                </h3>
+                <p className="text-sm text-slate-500 max-w-md mx-auto">
+                  You don&apos;t have any server hosts enrolled in your account workspace yet. Get started by adding your first server.
+                </p>
+                <button
+                  onClick={() => setActiveTab("infrastructure")}
+                  className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-semibold transition-all shadow-md active:scale-95 mt-2 inline-flex items-center gap-2"
+                >
+                  <Plus size={16} /> Enroll a Server
+                </button>
+              </div>
             ) : filteredServers.length === 0 ? (
               <div className={`p-12 border border-dashed rounded-xl text-center space-y-3 ${
                 isLight ? "border-slate-200 bg-white" : "border-slate-800 bg-slate-900/30"
               }`}>
                 <Search size={32} className="mx-auto text-slate-500 opacity-60" />
                 <h3 className={`font-semibold text-lg ${isLight ? "text-slate-800" : "text-slate-200"}`}>
-                  No instances found
+                  No matching instances found
                 </h3>
                 <p className="text-sm text-slate-500 max-w-md mx-auto">
                   No host nodes or microservices match your search query &quot;{searchQuery}&quot;. Try adjusting your filters.
@@ -637,9 +655,14 @@ export default function DashboardRoute() {
               </form>
 
               <div className="space-y-2">
-                {alertEmails.map((email, idx) => {
-                  const isPrimary = idx === 0;
-                  return (
+                {alertEmails.length === 0 ? (
+                  <div className={`p-4 border border-dashed rounded-lg text-center text-xs ${
+                    isLight ? "border-slate-200 text-slate-500" : "border-slate-800 text-slate-500"
+                  }`}>
+                    No additional notification recipients added. Click "Add Recipient" above to register extra emails.
+                  </div>
+                ) : (
+                  alertEmails.map((email) => (
                     <div
                       key={email}
                       className={`flex items-center justify-between p-3 border rounded-lg ${
@@ -649,29 +672,21 @@ export default function DashboardRoute() {
                       <div className="flex items-center gap-3">
                         <Mail size={16} className="text-slate-400" />
                         <span className={`text-sm font-mono ${isLight ? "text-slate-800" : "text-slate-200"}`}>{email}</span>
-                        {isPrimary ? (
-                          <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-blue-500/10 text-blue-500 border border-blue-500/20">
-                            Primary Recipient (Locked)
-                          </span>
-                        ) : (
-                          <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
-                            Active Target
-                          </span>
-                        )}
+                        <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                          Active Target
+                        </span>
                       </div>
 
-                      {!isPrimary && (
-                        <button
-                          onClick={() => setEmailToDelete(email)}
-                          className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-500/10 rounded transition-colors"
-                          title="Remove email from alert list"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      )}
+                      <button
+                        onClick={() => setEmailToDelete(email)}
+                        className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-500/10 rounded transition-colors"
+                        title="Remove email from alert list"
+                      >
+                        <Trash2 size={14} />
+                      </button>
                     </div>
-                  );
-                })}
+                  ))
+                )}
               </div>
 
               {emailToDelete && (
