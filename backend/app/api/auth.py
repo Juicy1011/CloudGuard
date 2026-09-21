@@ -5,6 +5,9 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from app.database import get_db
 from app.models.user import User
+from app.models.server import Server
+from app.models.health import HealthLog, ContainerLog
+from app.models.setting import NotificationEmail
 from app.core.security import hash_password, verify_password, create_access_token, decode_access_token, settings
 from app.core.incident import send_otp_email
 
@@ -84,10 +87,15 @@ def login(credentials: UserLogin, db: Session = Depends(get_db)):
     user = db.query(User).filter(
         (User.email == credentials.email) | (User.username == credentials.email)
     ).first()
-    if not user or not verify_password(credentials.password, user.hashed_password):
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No account associated with this email address"
+        )
+    if not verify_password(credentials.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid credentials"
+            detail="Invalid password. Please check your password and try again."
         )
 
     token = create_access_token({"sub": str(user.id), "email": user.email})
@@ -217,6 +225,17 @@ def delete_account(req: DeleteAccountRequest, db: Session = Depends(get_db)):
             detail="Account not found"
         )
     
+    servers = db.query(Server).filter(Server.owner_id == user.id).all()
+    for s in servers:
+        db.query(HealthLog).filter(HealthLog.server_id == s.id).delete()
+        db.query(ContainerLog).filter(ContainerLog.server_id == s.id).delete()
+        db.delete(s)
+    db.flush()
+
+    notification_emails = db.query(NotificationEmail).filter(NotificationEmail.owner_id == user.id).all()
+    for ne in notification_emails:
+        db.delete(ne)
+
     db.delete(user)
     db.commit()
     return {"message": "Account successfully deleted."}

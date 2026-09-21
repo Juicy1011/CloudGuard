@@ -920,7 +920,7 @@ export default function DashboardRoute() {
                       {profilePasswordRevealed ? (
                         <>
                           <Key size={13} className="text-amber-500 animate-pulse" />
-                          <span className="font-bold font-mono text-slate-900 dark:text-white">{user.password || "••••••••"}</span>
+                          <span className={`font-bold font-mono ${isLight ? "text-slate-900" : "text-white"}`}>{user.password || "••••••••"}</span>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
