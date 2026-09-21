@@ -227,3 +227,23 @@ export async function deleteNotificationEmail(identifier: string | number) {
   }
   return response.json();
 }
+
+export async function updateUserProfile(payload: { username?: string; password?: string }) {
+  const headers = getAuthHeaders();
+  if (!headers["Authorization"]) {
+    throw new Error("Session expired. Please log out and log in again.");
+  }
+  const response = await fetch(`${getApiBaseUrl()}/auth/profile`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      ...headers,
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to update profile");
+  }
+  return response.json();
+}

@@ -6,8 +6,8 @@ import Sidebar from "@/components/Sidebar";
 import StatusCard from "@/components/StatusCard";
 import MicroservicesList from "@/components/MicroservicesList";
 import InfrastructureView from "@/components/InfrastructureView";
-import { fetchServers, fetchServerDetail, fetchNotificationEmails, addNotificationEmail, deleteNotificationEmail, deleteUserAccount, revealServerCredentials } from "@/lib/api";
-import { getStoredUser, clearStoredUser, UserSession } from "@/lib/auth";
+import { fetchServers, fetchServerDetail, fetchNotificationEmails, addNotificationEmail, deleteNotificationEmail, deleteUserAccount, revealServerCredentials, updateUserProfile } from "@/lib/api";
+import { getStoredUser, setStoredUser, clearStoredUser, UserSession } from "@/lib/auth";
 import { ChevronLeft, AlertCircle, Bell, AlertTriangle, Key, Settings, CheckCircle, RefreshCw, LogOut, Search, X, User as UserIcon, Mail, Plus, Trash2, ShieldCheck, Clock, HardDrive, ArrowRight, Copy, Check, Unlock } from "lucide-react";
 
 export default function DashboardRoute() {
@@ -50,6 +50,73 @@ export default function DashboardRoute() {
   const [isDeleteAccountModalOpen, setIsDeleteAccountModalOpen] = useState(false);
   const [deleteAccountLoading, setDeleteAccountLoading] = useState(false);
   const [deleteAccountError, setDeleteAccountError] = useState<string | null>(null);
+
+  const [profilePasswordRevealed, setProfilePasswordRevealed] = useState(false);
+  const [profileCopyTimer, setProfileCopyTimer] = useState<number | null>(null);
+  const [copiedProfilePass, setCopiedProfilePass] = useState(false);
+
+  const [editUsername, setEditUsername] = useState("");
+  const [editPassword, setEditPassword] = useState("");
+  const [profileSuccess, setProfileSuccess] = useState<string | null>(null);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [profileLoading, setProfileLoading] = useState(false);
+
+  const handleUpdateProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editUsername && !editPassword) {
+      setProfileError("Please provide a new username or password to update.");
+      return;
+    }
+    setProfileLoading(true);
+    setProfileError(null);
+    setProfileSuccess(null);
+    try {
+      const payload: { username?: string; password?: string } = {};
+      if (editUsername.trim()) payload.username = editUsername.trim();
+      if (editPassword) payload.password = editPassword;
+
+      const updatedUser = await updateUserProfile(payload);
+      setProfileSuccess("Operator profile updated successfully.");
+      
+      const newSession = {
+        ...user,
+        username: updatedUser.username,
+        email: updatedUser.email,
+        ...(editPassword ? { password: editPassword } : {})
+      };
+      setStoredUser(newSession, true);
+      setUser(newSession);
+
+      setEditUsername("");
+      setEditPassword("");
+    } catch (err: any) {
+      setProfileError(err.message || "Failed to update profile.");
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
+  const handleToggleRevealProfilePassword = () => {
+    if (profilePasswordRevealed) {
+      setProfilePasswordRevealed(false);
+      setProfileCopyTimer(null);
+      return;
+    }
+
+    setProfilePasswordRevealed(true);
+    setProfileCopyTimer(5);
+
+    const interval = setInterval(() => {
+      setProfileCopyTimer((prev) => {
+        if (prev === null || prev <= 1) {
+          clearInterval(interval);
+          setProfilePasswordRevealed(false);
+          return null;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
 
   const [revealedCreds, setRevealedCreds] = useState<{ [serverId: number]: number }>({});
   const [decryptedCreds, setDecryptedCreds] = useState<{ [serverId: number]: { password?: string; private_key?: string } }>({});
@@ -763,6 +830,70 @@ export default function DashboardRoute() {
                 </div>
               </div>
 
+              <div className="pt-6 pb-6 border-b border-slate-200 dark:border-slate-800 space-y-4">
+                <h3 className={`text-sm font-bold uppercase tracking-wider ${isLight ? "text-slate-800" : "text-slate-200"}`}>
+                  Update Profile Credentials
+                </h3>
+                
+                {profileSuccess && (
+                  <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 rounded-lg text-xs font-medium">
+                    {profileSuccess}
+                  </div>
+                )}
+                
+                {profileError && (
+                  <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-500 rounded-lg text-xs font-medium">
+                    {profileError}
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className={`block text-xs font-semibold mb-1 ${isLight ? "text-slate-700" : "text-slate-300"}`}>
+                      Username
+                    </label>
+                    <input
+                      type="text"
+                      value={editUsername}
+                      onChange={(e) => setEditUsername(e.target.value)}
+                      placeholder={user.username}
+                      className={`w-full px-3 py-2 border rounded-lg text-sm transition-colors ${
+                        isLight
+                          ? "bg-slate-50 border-slate-300 text-slate-900 focus:bg-white focus:border-blue-500"
+                          : "bg-slate-950 border-slate-800 text-slate-100 focus:border-blue-500"
+                      }`}
+                    />
+                  </div>
+                  <div>
+                    <label className={`block text-xs font-semibold mb-1 ${isLight ? "text-slate-700" : "text-slate-300"}`}>
+                      New Password (Optional)
+                    </label>
+                    <input
+                      type="password"
+                      value={editPassword}
+                      onChange={(e) => setEditPassword(e.target.value)}
+                      placeholder="Leave blank to keep current"
+                      className={`w-full px-3 py-2 border rounded-lg text-sm transition-colors ${
+                        isLight
+                          ? "bg-slate-50 border-slate-300 text-slate-900 focus:bg-white focus:border-blue-500"
+                          : "bg-slate-950 border-slate-800 text-slate-100 focus:border-blue-500"
+                      }`}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-2">
+                  <button
+                    onClick={handleUpdateProfile}
+                    disabled={profileLoading}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-500 active:scale-95 disabled:opacity-50 text-white text-xs font-semibold rounded-lg transition-all shadow-sm flex items-center gap-2"
+                  >
+                    {profileLoading ? <RefreshCw size={14} className="animate-spin" /> : null}
+                    Save Profile Changes
+                  </button>
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6">
                 <div className={`p-4 border rounded-lg ${isLight ? "bg-slate-50 border-slate-200" : "bg-slate-950/40 border-slate-800"}`}>
                   <div className="flex items-center gap-3 mb-2">
@@ -771,16 +902,49 @@ export default function DashboardRoute() {
                       Security & Password
                     </h4>
                   </div>
-                  <p className="text-xs text-slate-500 leading-relaxed">
+                  <p className="text-xs text-slate-500 leading-relaxed mb-3">
                     Password hashing algorithm: PBKDF2-SHA256 with salt. Credentials stored securely in PostgreSQL.
                   </p>
-                  <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                  
+                  <div className="pt-2 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
                     <span className="text-xs font-mono text-slate-400">STATUS: PROTECTED</span>
                     <button
-                      onClick={() => router.push("/login")}
-                      className="text-xs font-semibold text-blue-500 hover:underline"
+                      onClick={handleToggleRevealProfilePassword}
+                      className={`px-3 py-1.5 rounded-lg border text-xs font-mono font-semibold transition-all duration-300 flex items-center gap-2 ${
+                        profilePasswordRevealed
+                          ? (isLight ? "bg-amber-100 border-amber-300 text-amber-800" : "bg-amber-500/20 border-amber-500/40 text-amber-300")
+                          : (isLight ? "bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100" : "bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20")
+                      }`}
+                      title="Click to reveal/lock password"
                     >
-                      Reset Password
+                      {profilePasswordRevealed ? (
+                        <>
+                          <Key size={13} className="text-amber-500 animate-pulse" />
+                          <span className="font-bold font-mono text-slate-900 dark:text-white">{user.password || "••••••••"}</span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigator.clipboard.writeText(user.password || "");
+                              setCopiedProfilePass(true);
+                              setTimeout(() => setCopiedProfilePass(false), 2000);
+                            }}
+                            className="p-1 hover:bg-black/10 rounded transition-all"
+                            title="Copy to clipboard"
+                          >
+                            {copiedProfilePass ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
+                          </button>
+                          {profileCopyTimer !== null && (
+                            <span className="text-[10px] bg-amber-500/30 px-1.5 py-0.5 rounded font-bold">
+                              {profileCopyTimer}s
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <Key size={13} />
+                          <span>PASS_AUTH</span>
+                        </>
+                      )}
                     </button>
                   </div>
                 </div>

@@ -5,10 +5,14 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from app.database import get_db
 from app.models.user import User
-from app.core.security import hash_password, verify_password, create_access_token, settings
+from app.core.security import hash_password, verify_password, create_access_token, decode_access_token, settings
 from app.core.incident import send_otp_email
 
 router = APIRouter()
+
+class ProfileUpdateRequest(BaseModel):
+    username: str | None = None
+    password: str | None = None
 
 class UserRegister(BaseModel):
     username: str
@@ -137,6 +141,59 @@ def reset_password(req: ResetPasswordRequest, db: Session = Depends(get_db)):
     db.commit()
 
     return {"message": "Password successfully updated! You can now log in."}
+
+@router.put("/profile", response_model=UserResponse)
+def update_profile(
+    req: ProfileUpdateRequest,
+    authorization: str | None = Header(None),
+    db: Session = Depends(get_db)
+):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication token missing or invalid"
+        )
+    
+    token = authorization.split(" ")[1]
+    payload = decode_access_token(token)
+    if not payload or "sub" not in payload:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired authentication token"
+        )
+    
+    user_id = int(payload["sub"])
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User account not found"
+        )
+
+    if req.username and req.username.strip():
+        existing = db.query(User).filter(User.username == req.username.strip(), User.id != user_id).first()
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Username already taken by another account"
+            )
+        user.username = req.username.strip()
+
+    if req.password:
+        user.hashed_password = hash_password(req.password)
+
+    db.commit()
+    db.refresh(user)
+
+    new_token = create_access_token({"sub": str(user.id), "email": user.email})
+    return UserResponse(
+        id=user.id,
+        username=user.username,
+        email=user.email,
+        access_token=new_token,
+        token_type="bearer",
+        is_protected=check_is_protected(user.email)
+    )
 
 class DeleteAccountRequest(BaseModel):
     email: str
