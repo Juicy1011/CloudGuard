@@ -54,7 +54,7 @@ export default function AnalyticsView({ servers, incidents = [], theme = "dark" 
 
   const totalServers = servers.length;
   const onlineServers = servers.filter((s) => s.last_status === "online").length;
-  const slaUptimePercent = totalServers > 0 ? ((onlineServers / totalServers) * 100).toFixed(2) : "100.00";
+  const slaUptimePercent = totalServers > 0 ? ((onlineServers / totalServers) * 100).toFixed(2) : "0.00";
   const slaValue = parseFloat(slaUptimePercent);
 
   const avgLatency = totalServers > 0
