@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { LayoutDashboard, Shield, Server, Bell, LogOut, ChevronLeft, ChevronRight, Sun, Moon, User as UserIcon, Settings } from "lucide-react";
+import { LayoutDashboard, Shield, Server, Bell, LogOut, ChevronLeft, ChevronRight, Sun, Moon, User as UserIcon, Settings, BarChart3 } from "lucide-react";
 
 interface SidebarProps {
   activeTab?: string;
@@ -34,6 +34,7 @@ export default function Sidebar({
     { id: "infrastructure", icon: Server, label: "Infrastructure" },
     { id: "incidents", icon: Bell, label: "Incidents" },
     { id: "access", icon: Shield, label: "Access Control" },
+    { id: "analytics", icon: BarChart3, label: "Analytics & Reports" },
   ];
 
   const handleToggle = () => {

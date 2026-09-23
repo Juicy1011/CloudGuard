@@ -6,6 +6,7 @@ import Sidebar from "@/components/Sidebar";
 import StatusCard from "@/components/StatusCard";
 import MicroservicesList from "@/components/MicroservicesList";
 import InfrastructureView from "@/components/InfrastructureView";
+import AnalyticsView from "@/components/AnalyticsView";
 import { fetchServers, fetchServerDetail, fetchNotificationEmails, addNotificationEmail, deleteNotificationEmail, deleteUserAccount, revealServerCredentials, updateUserProfile } from "@/lib/api";
 import { getStoredUser, setStoredUser, clearStoredUser, UserSession } from "@/lib/auth";
 import { ChevronLeft, AlertCircle, Bell, AlertTriangle, Key, Settings, CheckCircle, RefreshCw, LogOut, Search, X, User as UserIcon, Mail, Plus, Trash2, ShieldCheck, Clock, HardDrive, ArrowRight, Copy, Check, Unlock } from "lucide-react";
@@ -21,7 +22,7 @@ export default function DashboardRoute() {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       const urlTab = params.get("tab");
-      if (urlTab && ["dashboard", "infrastructure", "incidents", "access-control", "settings", "profile"].includes(urlTab)) {
+      if (urlTab && ["dashboard", "infrastructure", "incidents", "access-control", "analytics", "settings", "profile"].includes(urlTab)) {
         setActiveTab(urlTab);
       }
     }
@@ -299,6 +300,34 @@ export default function DashboardRoute() {
 
   const isUnreachable = selectedServer && selectedServer.last_status !== "online";
 
+  const incidents: any[] = [];
+  servers.forEach(server => {
+    if (server.last_status !== "online") {
+      incidents.push({
+        id: `server-${server.id}`,
+        serverId: server.id,
+        type: "server",
+        severity: "CRITICAL",
+        title: `Host Down: ${server.name}`,
+        message: `Server failed ICMP ping or SSH handshake. Host is reported as '${server.last_status}'.`,
+        time: server.last_seen ? new Date(server.last_seen).toLocaleTimeString() : "Just now"
+      });
+    }
+    server.containers?.forEach((c: any) => {
+      if (!c.status.toLowerCase().startsWith("up")) {
+        incidents.push({
+          id: `container-${server.id}-${c.container_id}`,
+          serverId: server.id,
+          type: "container",
+          severity: "WARNING",
+          title: `Microservice Stopped: ${c.name} on ${server.name}`,
+          message: `Container state returned: '${c.status}'. Telemetry reporting 0.0% usage.`,
+          time: "Real-time trigger"
+        });
+      }
+    });
+  });
+
   const renderContent = () => {
     switch (activeTab) {
       case "dashboard":
@@ -573,34 +602,6 @@ export default function DashboardRoute() {
         return <InfrastructureView servers={servers} onRefresh={loadData} theme={theme} />;
 
       case "incidents":
-        const incidents: any[] = [];
-        servers.forEach(server => {
-          if (server.last_status !== "online") {
-            incidents.push({
-              id: `server-${server.id}`,
-              serverId: server.id,
-              type: "server",
-              severity: "CRITICAL",
-              title: `Host Down: ${server.name}`,
-              message: `Server failed ICMP ping or SSH handshake. Host is reported as '${server.last_status}'.`,
-              time: server.last_seen ? new Date(server.last_seen).toLocaleTimeString() : "Just now"
-            });
-          }
-          server.containers?.forEach((c: any) => {
-            if (!c.status.toLowerCase().startsWith("up")) {
-              incidents.push({
-                id: `container-${server.id}-${c.container_id}`,
-                serverId: server.id,
-                type: "container",
-                severity: "WARNING",
-                title: `Microservice Stopped: ${c.name} on ${server.name}`,
-                message: `Container state returned: '${c.status}'. Telemetry reporting 0.0% usage.`,
-                time: "Real-time trigger"
-              });
-            }
-          });
-        });
-
         return (
           <div className="space-y-6">
             <header className="mb-8">
@@ -796,6 +797,9 @@ export default function DashboardRoute() {
             </div>
           </div>
         );
+
+      case "analytics":
+        return <AnalyticsView servers={servers} incidents={incidents} theme={theme} />;
 
       case "profile":
         return (

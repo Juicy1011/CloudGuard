@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Header, status
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from typing import List, Optional
 from app.database import get_db
 from app.models.server import Server
@@ -67,7 +68,26 @@ def create_server(server: ServerCreate, db: Session = Depends(get_db), current_u
 
 @router.get("/", response_model=List[ServerView])
 def list_servers(db: Session = Depends(get_db), current_user_id: int = Depends(get_current_user_id)):
-    return db.query(Server).filter(Server.owner_id == current_user_id).all()
+    servers = db.query(Server).filter(Server.owner_id == current_user_id).all()
+    results = []
+    for s in servers:
+        c_count = db.query(func.count(ContainerLog.id)).filter(ContainerLog.server_id == s.id).scalar() or 0
+        s_view = ServerView(
+            id=s.id,
+            name=s.name,
+            hostname=s.hostname,
+            port=s.port,
+            username=s.username,
+            owner_id=s.owner_id,
+            is_active=s.is_active,
+            last_status=s.last_status,
+            status_override=s.status_override,
+            stopped_containers=s.stopped_containers,
+            container_count=c_count,
+            last_seen=s.last_seen
+        )
+        results.append(s_view)
+    return results
 
 @router.get("/{server_id}", response_model=ServerDetail)
 def get_server_detail(server_id: int, db: Session = Depends(get_db), current_user_id: int = Depends(get_current_user_id)):
@@ -114,6 +134,7 @@ def get_server_detail(server_id: int, db: Session = Depends(get_db), current_use
         last_status=server.last_status,
         status_override=server.status_override,
         stopped_containers=server.stopped_containers,
+        container_count=len(c_views),
         last_seen=server.last_seen,
         latest_health=h_view,
         containers=c_views

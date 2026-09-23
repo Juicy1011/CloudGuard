@@ -247,3 +247,13 @@ export async function updateUserProfile(payload: { username?: string; password?:
   }
   return response.json();
 }
+
+export async function fetchFleetTrend(range: "24h" | "7d" | "30d" = "7d") {
+  const response = await fetch(`${getApiBaseUrl()}/health/trend?range=${range}`, {
+    headers: {
+      ...getAuthHeaders(),
+    },
+  });
+  if (!response.ok) throw new Error("Failed to fetch fleet telemetry trend");
+  return response.json();
+}

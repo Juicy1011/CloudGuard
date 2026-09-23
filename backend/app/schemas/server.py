@@ -19,6 +19,7 @@ class ServerView(ServerBase):
     last_status: str
     status_override: Optional[str] = None
     stopped_containers: Optional[List[str]] = []
+    container_count: int = 0
     last_seen: Optional[datetime] = None
 
     class Config:
