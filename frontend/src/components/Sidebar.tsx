@@ -46,7 +46,7 @@ export default function Sidebar({
   };
 
   return (
-    <aside className={`border-r flex flex-col p-4 transition-all duration-300 ease-in-out ${
+    <aside className={`h-full border-r flex flex-col p-4 transition-all duration-300 ease-in-out ${
       isLight ? "bg-white border-slate-200 text-slate-800" : "bg-slate-950 border-slate-800 text-slate-100"
     } ${isCollapsed ? "w-20" : "w-64"}`}>
       <div className="flex items-center justify-between mb-8 px-2">

@@ -10,6 +10,7 @@ import {
   AlertTriangle, 
   AlertCircle,
   Download, 
+  FileText,
   Cpu, 
   HardDrive, 
   ShieldCheck,
@@ -17,6 +18,8 @@ import {
   Server,
   RefreshCw
 } from "lucide-react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import { fetchFleetTrend } from "@/lib/api";
 
 interface AnalyticsViewProps {
@@ -64,6 +67,99 @@ export default function AnalyticsView({ servers, incidents = [], theme = "dark" 
     : "0.0";
 
   const totalContainers = servers.reduce((acc, s) => acc + (s.container_count ?? s.containers?.length ?? s.container_logs?.length ?? 0), 0);
+
+  const handleExportPDF = () => {
+    if (servers.length === 0) return;
+
+    const doc = new jsPDF({
+      orientation: "portrait",
+      unit: "mm",
+      format: "a4"
+    });
+
+    doc.setFillColor(15, 23, 42);
+    doc.rect(0, 0, 210, 32, "F");
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(18);
+    doc.text("CloudGuard Observability Platform", 14, 15);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(148, 163, 184);
+    doc.text("Executive Fleet Reliability & Telemetry Audit Report", 14, 23);
+
+    doc.setFontSize(8);
+    doc.text(`Generated: ${new Date().toLocaleString()}`, 145, 23);
+
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(226, 232, 240);
+    doc.roundedRect(14, 38, 56, 22, 3, 3, "FD");
+    doc.roundedRect(77, 38, 56, 22, 3, 3, "FD");
+    doc.roundedRect(140, 38, 56, 22, 3, 3, "FD");
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.setTextColor(100, 116, 139);
+    doc.text("SLA FLEET AVAILABILITY", 18, 44);
+    doc.text("AVG PING LATENCY", 81, 44);
+    doc.text("DISRUPTION ALERTS", 144, 44);
+
+    doc.setFontSize(14);
+    doc.setTextColor(15, 23, 42);
+    doc.text(`${slaUptimePercent}%`, 18, 54);
+    doc.text(`${avgLatency} ms`, 81, 54);
+    doc.text(`${incidents.length} Events`, 144, 54);
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.setTextColor(15, 23, 42);
+    doc.text("Monitored Host Nodes Reliability Matrix", 14, 70);
+
+    const tableHeaders = [["Server Name", "Hostname", "Port", "Status", "Microservices", "CPU %", "RAM %", "Latency"]];
+    const tableRows = servers.map((s) => [
+      s.name,
+      s.hostname,
+      s.port || 22,
+      (s.last_status || "unknown").toUpperCase(),
+      s.container_count ?? s.containers?.length ?? s.container_logs?.length ?? 0,
+      s.latest_health?.cpu_percent ? `${s.latest_health.cpu_percent.toFixed(1)}%` : "0.0%",
+      s.latest_health?.memory_percent ? `${s.latest_health.memory_percent.toFixed(1)}%` : "0.0%",
+      s.latest_health?.latency ? `${s.latest_health.latency.toFixed(1)} ms` : "0.0 ms"
+    ]);
+
+    autoTable(doc, {
+      startY: 74,
+      head: tableHeaders,
+      body: tableRows,
+      theme: "grid",
+      headStyles: {
+        fillColor: [30, 41, 59],
+        textColor: [255, 255, 255],
+        fontStyle: "bold",
+        fontSize: 9
+      },
+      bodyStyles: {
+        fontSize: 8,
+        textColor: [51, 65, 85]
+      },
+      alternateRowStyles: {
+        fillColor: [248, 250, 252]
+      }
+    });
+
+    const pageCount = (doc as any).internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(148, 163, 184);
+      doc.text("CloudGuard Agentless Cloud Monitoring Engine", 14, 287);
+      doc.text(`Page ${i} of ${pageCount}`, 180, 287);
+    }
+
+    doc.save("cloudguard-fleet-report.pdf");
+  };
 
   const handleExportCSV = () => {
     if (servers.length === 0) return;
@@ -118,7 +214,13 @@ export default function AnalyticsView({ servers, incidents = [], theme = "dark" 
                 : "bg-slate-900 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-white"
             }`}
           >
-            <Download size={15} /> Export CSV Audit Report
+            <Download size={15} /> Export CSV Report
+          </button>
+          <button
+            onClick={handleExportPDF}
+            className="px-4 py-2.5 rounded-xl border text-xs font-semibold flex items-center gap-2 transition-all shadow-sm active:scale-95 bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-blue-500 hover:from-blue-500 hover:to-indigo-500"
+          >
+            <FileText size={15} /> Export PDF Report
           </button>
         </div>
       </header>
