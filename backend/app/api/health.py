@@ -67,6 +67,14 @@ def get_fleet_trend(
     ]
 
 @router.get("/{server_id}/history", response_model=List[HealthLogView])
-def get_server_history(server_id: int, limit: int = 20, db: Session = Depends(get_db)):
+def get_server_history(
+    server_id: int,
+    limit: int = 20,
+    current_user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db)
+):
+    server = db.query(Server).filter(Server.id == server_id, Server.owner_id == current_user_id).first()
+    if not server:
+        raise HTTPException(status_code=404, detail="Server not found")
     logs = db.query(HealthLog).filter(HealthLog.server_id == server_id).order_by(HealthLog.timestamp.desc()).limit(limit).all()
     return logs

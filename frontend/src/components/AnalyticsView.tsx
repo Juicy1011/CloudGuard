@@ -149,6 +149,84 @@ export default function AnalyticsView({ servers, incidents = [], theme = "dark" 
       }
     });
 
+    let lastY = (doc as any).lastAutoTable ? (doc as any).lastAutoTable.finalY + 10 : 160;
+
+    if (trendData.length > 0) {
+      if (lastY > 230) {
+        doc.addPage();
+        lastY = 20;
+      }
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.setTextColor(15, 23, 42);
+      doc.text("Telemetry & Resource Trend History", 14, lastY);
+
+      const trendHeaders = [["Time / Snapshot", "Latency (ms)", "CPU Avg %", "Memory Avg %"]];
+      const trendRows = trendData.slice(-10).map((t) => [
+        t.label.includes("T") ? new Date(t.label).toLocaleString() : t.label,
+        `${t.latency} ms`,
+        `${t.cpu}%`,
+        `${t.memory}%`
+      ]);
+
+      autoTable(doc, {
+        startY: lastY + 4,
+        head: trendHeaders,
+        body: trendRows,
+        theme: "grid",
+        headStyles: {
+          fillColor: [14, 116, 144],
+          textColor: [255, 255, 255],
+          fontStyle: "bold",
+          fontSize: 9
+        },
+        bodyStyles: {
+          fontSize: 8,
+          textColor: [51, 65, 85]
+        }
+      });
+
+      lastY = (doc as any).lastAutoTable ? (doc as any).lastAutoTable.finalY + 10 : lastY + 50;
+    }
+
+    if (incidents.length > 0) {
+      if (lastY > 230) {
+        doc.addPage();
+        lastY = 20;
+      }
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.setTextColor(15, 23, 42);
+      doc.text("Audit & Incident Event Logs", 14, lastY);
+
+      const incidentHeaders = [["Host Target", "Severity", "Incident Description", "Recorded Timestamp"]];
+      const incidentRows = incidents.map((inc) => [
+        inc.serverName || "Unknown Host",
+        inc.severity || "WARNING",
+        inc.message || "Disruption event recorded",
+        inc.timestamp ? new Date(inc.timestamp).toLocaleString() : "Unknown"
+      ]);
+
+      autoTable(doc, {
+        startY: lastY + 4,
+        head: incidentHeaders,
+        body: incidentRows,
+        theme: "grid",
+        headStyles: {
+          fillColor: [190, 18, 60],
+          textColor: [255, 255, 255],
+          fontStyle: "bold",
+          fontSize: 9
+        },
+        bodyStyles: {
+          fontSize: 8,
+          textColor: [51, 65, 85]
+        }
+      });
+    }
+
     const pageCount = (doc as any).internal.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
       doc.setPage(i);
@@ -369,50 +447,70 @@ export default function AnalyticsView({ servers, incidents = [], theme = "dark" 
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="h-60 w-full relative flex items-end pt-6">
-              <div className="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-20">
-                <div className="border-b border-slate-500 w-full" />
-                <div className="border-b border-slate-500 w-full" />
-                <div className="border-b border-slate-500 w-full" />
-                <div className="border-b border-slate-500 w-full" />
-              </div>
+            {(() => {
+              const maxObserved = Math.max(...trendData.map(p => Math.max(p.latency, p.cpu, p.memory)), 10);
+              const ticks = [
+                Math.round(maxObserved),
+                Math.round(maxObserved * 0.75),
+                Math.round(maxObserved * 0.5),
+                Math.round(maxObserved * 0.25),
+                0
+              ];
 
-              <div className="w-full h-full flex items-end justify-between gap-2 z-10">
-                {trendData.map((pt, idx) => {
-                  const maxVal = Math.max(...trendData.map(p => Math.max(p.latency, p.cpu, p.memory)), 100);
-                  const latHeight = Math.min(100, Math.max(8, (pt.latency / maxVal) * 100));
-                  const cpuHeight = Math.min(100, Math.max(8, (pt.cpu / maxVal) * 100));
+              return (
+                <div className="h-96 w-full relative flex items-end pt-8 pl-12">
+                  <div className="absolute left-0 top-8 bottom-8 w-10 flex flex-col justify-between items-end pr-2 text-[10px] font-mono font-semibold select-none text-slate-500 border-r border-slate-700/60">
+                    {ticks.map((t, idx) => (
+                      <span key={idx} className="leading-none">{t}</span>
+                    ))}
+                  </div>
 
-                  return (
-                    <div key={idx} className="flex-1 flex flex-col items-center gap-1 group relative h-full justify-end">
-                      <div className="w-full flex items-end justify-center gap-1 h-full">
-                        <div 
-                          className="w-1.5 sm:w-3 bg-gradient-to-t from-sky-600 to-cyan-400 rounded-t-sm transition-all duration-300 group-hover:brightness-125" 
-                          style={{ height: `${latHeight}%` }} 
-                        />
-                        <div 
-                          className="w-1.5 sm:w-3 bg-gradient-to-t from-indigo-600 to-blue-400 rounded-t-sm transition-all duration-300 group-hover:brightness-125" 
-                          style={{ height: `${cpuHeight}%` }} 
-                        />
-                      </div>
+                  <div className="absolute left-12 right-0 top-8 bottom-8 flex flex-col justify-between pointer-events-none opacity-20">
+                    <div className="border-b border-slate-500 w-full" />
+                    <div className="border-b border-slate-500 w-full" />
+                    <div className="border-b border-slate-500 w-full" />
+                    <div className="border-b border-slate-500 w-full" />
+                    <div className="border-b border-slate-500 w-full" />
+                  </div>
 
-                      <span className={`text-[10px] font-mono mt-2 truncate max-w-full ${isLight ? "text-slate-500" : "text-slate-400"}`}>
-                        {pt.label.includes("T") ? new Date(pt.label).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : pt.label}
-                      </span>
+                  <div className="w-full h-full flex items-end justify-between gap-1.5 sm:gap-3 z-10 px-2 overflow-x-auto">
+                    {trendData.map((pt, idx) => {
+                      const latHeight = Math.min(92, Math.max(45, (pt.latency / maxObserved) * 85));
+                      const cpuHeight = Math.min(92, Math.max(40, (pt.cpu / maxObserved) * 85));
+                      const isManyPoints = trendData.length > 12;
 
-                      <div className={`absolute bottom-full mb-2 hidden group-hover:flex flex-col p-2.5 rounded-lg border text-xs z-20 shadow-xl pointer-events-none whitespace-nowrap ${
-                        isLight ? "bg-slate-900 border-slate-800 text-white" : "bg-slate-950 border-slate-700 text-slate-100"
-                      }`}>
-                        <span className="font-semibold text-slate-400 mb-1">{pt.label}</span>
-                        <span className="text-sky-400">Latency: {pt.latency} ms</span>
-                        <span className="text-blue-400">CPU Avg: {pt.cpu}%</span>
-                        <span className="text-purple-400">RAM Avg: {pt.memory}%</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+                      return (
+                        <div key={idx} className="flex-1 min-w-[28px] sm:min-w-[40px] flex flex-col items-center gap-1.5 group relative h-full justify-end">
+                          <div className="w-full flex items-end justify-center gap-1 sm:gap-1.5 h-full">
+                            <div 
+                              className={`${isManyPoints ? "w-2 sm:w-4 md:w-5" : "w-4 sm:w-8 md:w-10"} bg-gradient-to-t from-sky-600 to-cyan-400 rounded-t-md transition-all duration-300 group-hover:brightness-125 shadow-md`} 
+                              style={{ height: `${latHeight}%` }} 
+                            />
+                            <div 
+                              className={`${isManyPoints ? "w-2 sm:w-4 md:w-5" : "w-4 sm:w-8 md:w-10"} bg-gradient-to-t from-indigo-600 to-blue-400 rounded-t-md transition-all duration-300 group-hover:brightness-125 shadow-md`} 
+                              style={{ height: `${cpuHeight}%` }} 
+                            />
+                          </div>
+
+                          <span className={`text-[11px] font-mono font-semibold mt-2 truncate max-w-full ${isLight ? "text-slate-600" : "text-slate-300"}`}>
+                            {pt.label.includes("T") ? new Date(pt.label).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : pt.label}
+                          </span>
+
+                          <div className={`absolute bottom-full mb-2 hidden group-hover:flex flex-col p-2.5 rounded-lg border text-xs z-20 shadow-xl pointer-events-none whitespace-nowrap ${
+                            isLight ? "bg-slate-900 border-slate-800 text-white" : "bg-slate-950 border-slate-700 text-slate-100"
+                          }`}>
+                            <span className="font-semibold text-slate-400 mb-1">{pt.label}</span>
+                            <span className="text-sky-400">Latency: {pt.latency} ms</span>
+                            <span className="text-blue-400">CPU Avg: {pt.cpu}%</span>
+                            <span className="text-purple-400">RAM Avg: {pt.memory}%</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
 
             <div className="flex items-center justify-center gap-6 pt-4 border-t border-slate-800/40 text-xs">
               <div className="flex items-center gap-2">
@@ -498,7 +596,7 @@ export default function AnalyticsView({ servers, incidents = [], theme = "dark" 
                         </span>
                       </td>
                       <td className="py-3.5 font-mono text-xs">
-                        {(s.containers?.length ?? s.container_logs?.length ?? 0)} microservices
+                        {(s.container_count ?? s.containers?.length ?? s.container_logs?.length ?? 0)} microservices
                       </td>
                       <td className="py-3.5 text-xs text-slate-500 font-mono">
                         {s.last_seen ? new Date(s.last_seen).toLocaleTimeString() : "N/A"}
