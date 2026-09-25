@@ -27,6 +27,14 @@ export default function InfrastructureView({ servers, onRefresh, theme = "dark" 
   const [serverToDelete, setServerToDelete] = useState<{ id: number; name: string; hostname?: string } | null>(null);
   const [chaosLoadingId, setChaosLoadingId] = useState<string | null>(null);
   
+  const [fieldErrors, setFieldErrors] = useState<{
+    name?: string;
+    hostname?: string;
+    port?: string;
+    username?: string;
+    credential?: string;
+  }>({});
+  
   const [visibleHostnames, setVisibleHostnames] = useState<Set<number>>(new Set());
 
   const totalServers = servers.length;
@@ -48,40 +56,84 @@ export default function InfrastructureView({ servers, onRefresh, theme = "dark" 
     setLoading(true);
     setError(null);
     setSuccess(null);
+    setFieldErrors({});
 
-    if (!name || !hostname || !username) {
-      setError("Please fill in all required fields.");
+    const errors: typeof fieldErrors = {};
+
+    const nameTrimmed = name.trim();
+    if (!nameTrimmed) {
+      errors.name = "Server Name is required.";
+    } else if (nameTrimmed.length < 2) {
+      errors.name = "Server Name must be at least 2 characters long.";
+    }
+
+    const hostTrimmed = hostname.trim();
+    if (!hostTrimmed) {
+      errors.hostname = "Hostname or IP Address is required.";
+    } else {
+      const ipOrDomainRegex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$|^localhost$|^(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$/;
+      if (!ipOrDomainRegex.test(hostTrimmed)) {
+        errors.hostname = "Invalid Hostname/IP format. Enter a valid IPv4 (e.g. 192.168.1.10) or domain.";
+      }
+    }
+
+    const portNum = Number(port);
+    if (isNaN(portNum) || portNum < 1 || portNum > 65535) {
+      errors.port = "Port must be a number between 1 and 65535.";
+    }
+
+    const userTrimmed = username.trim();
+    if (!userTrimmed) {
+      errors.username = "SSH Username is required.";
+    }
+
+    if (authType === "password") {
+      if (!password) {
+        errors.credential = "Password is required for Password authentication.";
+      }
+    } else {
+      if (!privateKey.trim()) {
+        errors.credential = "SSH Private Key is required.";
+      }
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
       setLoading(false);
       return;
     }
 
     try {
       const payload: any = {
-        name,
-        hostname,
-        port: Number(port),
-        username,
+        name: nameTrimmed,
+        hostname: hostTrimmed,
+        port: portNum,
+        username: userTrimmed
       };
 
       if (authType === "password") {
-        payload.password = password || undefined;
+        payload.password = password;
       } else {
-        payload.private_key = privateKey || undefined;
+        payload.private_key = privateKey.trim();
       }
 
       await createServer(payload);
-      setSuccess(`Server "${name}" enrolled successfully!`);
-      
+      setSuccess(`Server "${nameTrimmed}" enrolled successfully!`);
       setName("");
       setHostname("");
-      setPort(22);
-      setUsername("root");
       setPassword("");
       setPrivateKey("");
-      
+      setFieldErrors({});
       onRefresh();
     } catch (err: any) {
-      setError(err.message || "Failed to enroll server");
+      const errMsg = err.message || "Failed to enroll server";
+      if (errMsg.toLowerCase().includes("hostname")) {
+        setFieldErrors((prev) => ({ ...prev, hostname: "Server with this hostname already exists in your workspace." }));
+      } else if (errMsg.toLowerCase().includes("name")) {
+        setFieldErrors((prev) => ({ ...prev, name: errMsg }));
+      } else {
+        setError(errMsg);
+      }
     } finally {
       setLoading(false);
     }
@@ -396,14 +448,22 @@ export default function InfrastructureView({ servers, onRefresh, theme = "dark" 
                   type="text"
                   placeholder="e.g. Skylab Production"
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    if (fieldErrors.name) setFieldErrors((prev) => ({ ...prev, name: undefined }));
+                  }}
                   className={`w-full rounded-xl px-3.5 py-2 text-sm outline-none transition-all duration-150 ${
-                    isLight 
-                      ? "bg-slate-50/80 border border-slate-200 text-slate-900 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 placeholder:text-slate-400" 
-                      : "bg-slate-950/80 border border-slate-800 text-slate-200 focus:bg-slate-950 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 placeholder:text-slate-600"
+                    fieldErrors.name
+                      ? "border-red-500 ring-2 ring-red-500/20 bg-red-500/5 text-slate-900 dark:text-slate-100"
+                      : isLight 
+                        ? "bg-slate-50/80 border border-slate-200 text-slate-900 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 placeholder:text-slate-400" 
+                        : "bg-slate-950/80 border border-slate-800 text-slate-200 focus:bg-slate-950 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 placeholder:text-slate-600"
                   }`}
                   required
                 />
+                {fieldErrors.name && (
+                  <p className="text-xs text-red-500 mt-1 font-medium">{fieldErrors.name}</p>
+                )}
               </div>
 
               <div className="grid grid-cols-3 gap-3">
@@ -413,28 +473,44 @@ export default function InfrastructureView({ servers, onRefresh, theme = "dark" 
                     type="text"
                     placeholder="e.g. 192.168.1.10"
                     value={hostname}
-                    onChange={(e) => setHostname(e.target.value)}
+                    onChange={(e) => {
+                      setHostname(e.target.value);
+                      if (fieldErrors.hostname) setFieldErrors((prev) => ({ ...prev, hostname: undefined }));
+                    }}
                     className={`w-full rounded-xl px-3.5 py-2 text-sm outline-none transition-all duration-150 ${
-                      isLight 
-                        ? "bg-slate-50/80 border border-slate-200 text-slate-900 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 placeholder:text-slate-400" 
-                        : "bg-slate-950/80 border border-slate-800 text-slate-200 focus:bg-slate-950 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 placeholder:text-slate-600"
+                      fieldErrors.hostname
+                        ? "border-red-500 ring-2 ring-red-500/20 bg-red-500/5 text-slate-900 dark:text-slate-100"
+                        : isLight 
+                          ? "bg-slate-50/80 border border-slate-200 text-slate-900 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 placeholder:text-slate-400" 
+                          : "bg-slate-950/80 border border-slate-800 text-slate-200 focus:bg-slate-950 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 placeholder:text-slate-600"
                     }`}
                     required
                   />
+                  {fieldErrors.hostname && (
+                    <p className="text-xs text-red-500 mt-1 font-medium">{fieldErrors.hostname}</p>
+                  )}
                 </div>
                 <div className="space-y-1.5">
                   <label className={`text-xs font-semibold ${isLight ? "text-slate-700" : "text-slate-300"}`}>Port *</label>
                   <input
                     type="number"
                     value={port}
-                    onChange={(e) => setPort(Number(e.target.value))}
+                    onChange={(e) => {
+                      setPort(Number(e.target.value));
+                      if (fieldErrors.port) setFieldErrors((prev) => ({ ...prev, port: undefined }));
+                    }}
                     className={`w-full rounded-xl px-3 py-2 text-sm outline-none transition-all duration-150 ${
-                      isLight 
-                        ? "bg-slate-50/80 border border-slate-200 text-slate-900 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20" 
-                        : "bg-slate-950/80 border border-slate-800 text-slate-200 focus:bg-slate-950 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                      fieldErrors.port
+                        ? "border-red-500 ring-2 ring-red-500/20 bg-red-500/5 text-slate-900 dark:text-slate-100"
+                        : isLight 
+                          ? "bg-slate-50/80 border border-slate-200 text-slate-900 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20" 
+                          : "bg-slate-950/80 border border-slate-800 text-slate-200 focus:bg-slate-950 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                     }`}
                     required
                   />
+                  {fieldErrors.port && (
+                    <p className="text-xs text-red-500 mt-1 font-medium">{fieldErrors.port}</p>
+                  )}
                 </div>
               </div>
 
@@ -443,14 +519,22 @@ export default function InfrastructureView({ servers, onRefresh, theme = "dark" 
                 <input
                   type="text"
                   value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  onChange={(e) => {
+                    setUsername(e.target.value);
+                    if (fieldErrors.username) setFieldErrors((prev) => ({ ...prev, username: undefined }));
+                  }}
                   className={`w-full rounded-xl px-3.5 py-2 text-sm outline-none transition-all duration-150 ${
-                    isLight 
-                      ? "bg-slate-50/80 border border-slate-200 text-slate-900 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20" 
-                      : "bg-slate-950/80 border border-slate-800 text-slate-200 focus:bg-slate-950 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                    fieldErrors.username
+                      ? "border-red-500 ring-2 ring-red-500/20 bg-red-500/5 text-slate-900 dark:text-slate-100"
+                      : isLight 
+                        ? "bg-slate-50/80 border border-slate-200 text-slate-900 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20" 
+                        : "bg-slate-950/80 border border-slate-800 text-slate-200 focus:bg-slate-950 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                   }`}
                   required
                 />
+                {fieldErrors.username && (
+                  <p className="text-xs text-red-500 mt-1 font-medium">{fieldErrors.username}</p>
+                )}
               </div>
 
               <div className="space-y-1.5">
@@ -490,28 +574,44 @@ export default function InfrastructureView({ servers, onRefresh, theme = "dark" 
                     type="password"
                     placeholder="Enter password (stored encrypted)"
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      if (fieldErrors.credential) setFieldErrors((prev) => ({ ...prev, credential: undefined }));
+                    }}
                     className={`w-full rounded-xl px-3.5 py-2 text-sm outline-none transition-all duration-150 ${
-                      isLight 
-                        ? "bg-slate-50/80 border border-slate-200 text-slate-900 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 placeholder:text-slate-400" 
-                        : "bg-slate-950/80 border border-slate-800 text-slate-200 focus:bg-slate-950 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 placeholder:text-slate-600"
+                      fieldErrors.credential
+                        ? "border-red-500 ring-2 ring-red-500/20 bg-red-500/5 text-slate-900 dark:text-slate-100"
+                        : isLight 
+                          ? "bg-slate-50/80 border border-slate-200 text-slate-900 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 placeholder:text-slate-400" 
+                          : "bg-slate-950/80 border border-slate-800 text-slate-200 focus:bg-slate-950 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 placeholder:text-slate-600"
                     }`}
                   />
+                  {fieldErrors.credential && (
+                    <p className="text-xs text-red-500 mt-1 font-medium">{fieldErrors.credential}</p>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-1.5">
-                  <label className={`text-xs font-semibold ${isLight ? "text-slate-700" : "text-slate-300"}`}>Private Key</label>
+                  <label className={`text-xs font-semibold ${isLight ? "text-slate-700" : "text-slate-300"}`}>SSH Private Key</label>
                   <textarea
-                    placeholder="-----BEGIN OPENSSH PRIVATE KEY-----&#10;..."
                     rows={4}
+                    placeholder="-----BEGIN OPENSSH PRIVATE KEY-----"
                     value={privateKey}
-                    onChange={(e) => setPrivateKey(e.target.value)}
-                    className={`w-full rounded-xl px-3.5 py-2 text-xs font-mono outline-none transition-all duration-150 ${
-                      isLight 
-                        ? "bg-slate-50/80 border border-slate-200 text-slate-900 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 placeholder:text-slate-400" 
-                        : "bg-slate-950/80 border border-slate-800 text-slate-200 focus:bg-slate-950 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 placeholder:text-slate-600"
+                    onChange={(e) => {
+                      setPrivateKey(e.target.value);
+                      if (fieldErrors.credential) setFieldErrors((prev) => ({ ...prev, credential: undefined }));
+                    }}
+                    className={`w-full rounded-xl p-3 text-xs font-mono outline-none transition-all duration-150 ${
+                      fieldErrors.credential
+                        ? "border-red-500 ring-2 ring-red-500/20 bg-red-500/5 text-slate-900 dark:text-slate-100"
+                        : isLight 
+                          ? "bg-slate-50/80 border border-slate-200 text-slate-900 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 placeholder:text-slate-400" 
+                          : "bg-slate-950/80 border border-slate-800 text-slate-200 focus:bg-slate-950 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 placeholder:text-slate-600"
                     }`}
                   />
+                  {fieldErrors.credential && (
+                    <p className="text-xs text-red-500 mt-1 font-medium">{fieldErrors.credential}</p>
+                  )}
                 </div>
               )}
 
