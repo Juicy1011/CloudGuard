@@ -5,6 +5,7 @@ export interface UserSession {
   role?: string;
   access_token?: string;
   is_protected?: boolean;
+  password?: string;
 }
 
 const STORAGE_KEY = "cloudguard_user";

@@ -10,16 +10,16 @@ class Settings(BaseSettings):
     ENCRYPTION_KEY: str = os.getenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "postgresql://cloudguard:cloudguard_password@localhost:5440/cloudguard")
+    DATABASE_URL: str = os.getenv("DATABASE_URL")
     DEMO_MODE: str = "false"
-    
-    SMTP_SERVER: str = os.getenv("SMTP_SERVER", "smtp.gmail.com")
-    SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
-    SMTP_USER: str = os.getenv("SMTP_USER", "cloudguard2026@gmail.com")
-    SMTP_PASS: str = os.getenv("SMTP_PASS", "quayzjogwfovqesj")
-    ALERT_RECEIVER: str = os.getenv("ALERT_RECEIVER", "cloudguard2026@gmail.com")
-    PRIMARY_ADMIN_EMAIL: str = os.getenv("PRIMARY_ADMIN_EMAIL", "cloudguard2026@gmail.com")
-    
+
+    SMTP_SERVER: str = os.getenv("SMTP_SERVER")
+    SMTP_PORT: int = int(os.getenv("SMTP_PORT"))
+    SMTP_USER: str = os.getenv("SMTP_USER")
+    SMTP_PASS: str = os.getenv("SMTP_PASS")
+    ALERT_RECEIVER: str = os.getenv("ALERT_RECEIVER")
+    PRIMARY_ADMIN_EMAIL: str = os.getenv("PRIMARY_ADMIN_EMAIL")
+
     SKYLAB_SERVER_IP: str = "127.0.0.1"
     SKYLAB_SERVER_USER: str = "admin"
     SKYLAB_SERVER_PASS: str = ""

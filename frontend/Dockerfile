@@ -4,8 +4,6 @@ ENV PATH="$PNPM_HOME:$PATH"
 ENV CI=true
 RUN corepack enable
 
-
-
 WORKDIR /app
 
 COPY package.json pnpm-lock.yaml ./
@@ -13,7 +11,7 @@ RUN pnpm install --frozen-lockfile --ignore-scripts
 
 COPY . .
 
-RUN pnpm build
+RUN npx next build
 
 EXPOSE 3000
 CMD ["pnpm", "start"]
