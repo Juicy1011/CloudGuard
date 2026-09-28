@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import StatusCard from "@/components/StatusCard";
@@ -39,10 +39,12 @@ export default function DashboardRoute() {
   };
   const [servers, setServers] = useState<any[]>([]);
   const [selectedServer, setSelectedServer] = useState<any | null>(null);
+  const selectedServerRef = useRef<any | null>(null);
+  selectedServerRef.current = selectedServer;
+
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
-
   const [alertEmails, setAlertEmails] = useState<string[]>([]);
   const [newEmailInput, setNewEmailInput] = useState("");
   const [emailNotice, setEmailNotice] = useState<string | null>(null);
@@ -266,9 +268,12 @@ export default function DashboardRoute() {
       );
       setServers(detailedServers);
       
-      if (selectedServer) {
-        const updatedSelected = detailedServers.find(s => s.id === selectedServer.id);
-        if (updatedSelected) setSelectedServer(updatedSelected);
+      const currentSelected = selectedServerRef.current;
+      if (currentSelected) {
+        const updatedSelected = detailedServers.find(s => s.id === currentSelected.id);
+        if (updatedSelected) {
+          setSelectedServer(updatedSelected);
+        }
       }
     } catch (err) {
       console.error(err);
@@ -282,7 +287,7 @@ export default function DashboardRoute() {
     loadData();
     const interval = setInterval(loadData, 5000);
     return () => clearInterval(interval);
-  }, [user, selectedServer?.id]);
+  }, [user]);
 
   const handleSignOut = () => {
     clearStoredUser();
