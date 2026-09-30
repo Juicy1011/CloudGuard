@@ -191,41 +191,41 @@ export default function InfrastructureView({ servers, onRefresh, theme = "dark" 
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
         <div className={`p-5 flex items-center gap-4 rounded-xl border transition-all duration-200 ${
-          isLight ? "bg-white border-slate-200/80 shadow-xs hover:shadow-md hover:border-slate-300" : "bg-slate-900/60 border-slate-800 hover:border-slate-700"
+          isLight ? "bg-white border-slate-300 shadow-sm hover:shadow-md hover:border-blue-400" : "bg-slate-900/60 border-slate-800 hover:border-slate-700"
         }`}>
-          <div className="p-3 bg-blue-500/10 text-blue-500 rounded-xl shrink-0">
+          <div className="p-3 bg-gradient-to-br from-blue-600 to-indigo-700 text-white rounded-xl shrink-0 shadow-md shadow-blue-500/20">
             <Server size={22} />
           </div>
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Total Nodes</p>
-            <p className={`text-2xl font-bold tracking-tight ${isLight ? "text-slate-900" : "text-slate-100"}`}>{totalServers}</p>
+            <p className={`text-xs font-bold uppercase tracking-wider ${isLight ? "text-slate-600" : "text-slate-400"}`}>Total Nodes</p>
+            <p className={`text-2xl font-extrabold tracking-tight ${isLight ? "text-slate-900" : "text-slate-100"}`}>{totalServers}</p>
           </div>
         </div>
 
         <div className={`p-5 flex items-center gap-4 rounded-xl border transition-all duration-200 ${
-          isLight ? "bg-white border-slate-200/80 shadow-xs hover:shadow-md hover:border-slate-300" : "bg-slate-900/60 border-slate-800 hover:border-slate-700"
+          isLight ? "bg-white border-slate-300 shadow-sm hover:shadow-md hover:border-emerald-400" : "bg-slate-900/60 border-slate-800 hover:border-slate-700"
         }`}>
-          <div className="p-3 bg-emerald-500/10 text-emerald-500 rounded-xl shrink-0 relative">
+          <div className="p-3 bg-gradient-to-br from-emerald-500 to-teal-600 text-white rounded-xl shrink-0 shadow-md shadow-emerald-500/20 relative">
             <CheckCircle size={22} />
             {onlineServers > 0 && (
-              <span className="absolute top-2 right-2 w-2 h-2 bg-emerald-500 rounded-full animate-ping opacity-75" />
+              <span className="absolute top-2 right-2 w-2 h-2 bg-white rounded-full animate-ping opacity-90" />
             )}
           </div>
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Online</p>
-            <p className={`text-2xl font-bold tracking-tight ${isLight ? "text-slate-900" : "text-slate-100"}`}>{onlineServers}</p>
+            <p className={`text-xs font-bold uppercase tracking-wider ${isLight ? "text-emerald-800" : "text-slate-400"}`}>Online</p>
+            <p className={`text-2xl font-extrabold tracking-tight ${isLight ? "text-emerald-700" : "text-slate-100"}`}>{onlineServers}</p>
           </div>
         </div>
 
         <div className={`p-5 flex items-center gap-4 rounded-xl border transition-all duration-200 ${
-          isLight ? "bg-white border-slate-200/80 shadow-xs hover:shadow-md hover:border-slate-300" : "bg-slate-900/60 border-slate-800 hover:border-slate-700"
+          isLight ? "bg-white border-slate-300 shadow-sm hover:shadow-md hover:border-rose-400" : "bg-slate-900/60 border-slate-800 hover:border-slate-700"
         }`}>
-          <div className="p-3 bg-rose-500/10 text-rose-500 rounded-xl shrink-0">
+          <div className="p-3 bg-gradient-to-br from-rose-500 to-red-600 text-white rounded-xl shrink-0 shadow-md shadow-rose-500/20">
             <ShieldAlert size={22} />
           </div>
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Disrupted / Offline</p>
-            <p className={`text-2xl font-bold tracking-tight ${isLight ? "text-slate-900" : "text-slate-100"}`}>{offlineServers}</p>
+            <p className={`text-xs font-bold uppercase tracking-wider ${isLight ? "text-rose-800" : "text-slate-400"}`}>Disrupted / Offline</p>
+            <p className={`text-2xl font-extrabold tracking-tight ${isLight ? "text-rose-700" : "text-slate-100"}`}>{offlineServers}</p>
           </div>
         </div>
       </div>
@@ -246,21 +246,21 @@ export default function InfrastructureView({ servers, onRefresh, theme = "dark" 
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
         <div className="lg:col-span-2 space-y-4">
-          <div className={`rounded-2xl overflow-hidden border transition-all duration-300 ${
-            isLight ? "bg-white border-slate-200/80 shadow-sm" : "bg-slate-900/50 border-slate-800/80"
+          <div className={`rounded-2xl overflow-hidden border transition-all duration-300 shadow-sm ${
+            isLight ? "bg-white border-slate-300" : "bg-slate-900/50 border-slate-800/80"
           }`}>
             <div className={`px-6 py-4 border-b flex items-center justify-between ${
-              isLight ? "border-slate-200/80 bg-slate-50/50" : "border-slate-800/80 bg-slate-900/80"
+              isLight ? "border-slate-300 bg-slate-100/90" : "border-slate-800/80 bg-slate-900/80"
             }`}>
               <div className="flex items-center gap-2.5">
                 <Server size={18} className="text-blue-500" />
-                <h2 className={`text-base font-semibold ${isLight ? "text-slate-900" : "text-slate-100"}`}>
+                <h2 className={`text-base font-bold ${isLight ? "text-slate-900" : "text-slate-100"}`}>
                   Monitored Host Nodes
                 </h2>
               </div>
-              <span className={`text-xs font-mono px-2.5 py-1 rounded-md border font-medium ${
+              <span className={`text-xs font-mono px-2.5 py-1 rounded-md border font-bold ${
                 isLight 
-                  ? "bg-slate-100 text-slate-700 border-slate-200" 
+                  ? "bg-blue-50 text-blue-700 border-blue-300 shadow-xs" 
                   : "bg-slate-800 text-slate-300 border-slate-700"
               }`}>
                 {servers.length} {servers.length === 1 ? "node" : "nodes"}
@@ -270,9 +270,9 @@ export default function InfrastructureView({ servers, onRefresh, theme = "dark" 
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className={`border-b text-xs font-semibold tracking-wider uppercase ${
+                  <tr className={`border-b text-xs font-bold tracking-wider uppercase ${
                     isLight 
-                      ? "border-slate-200/80 bg-slate-50/80 text-slate-500" 
+                      ? "border-slate-300 bg-slate-100 text-slate-800 font-extrabold" 
                       : "border-slate-800/80 bg-slate-950/60 text-slate-400"
                   }`}>
                     <th className="py-3.5 px-5">Server Name</th>

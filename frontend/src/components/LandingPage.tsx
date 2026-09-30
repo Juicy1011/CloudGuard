@@ -3,24 +3,24 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { 
-  Shield, 
-  Server, 
-  Cpu, 
-  Terminal, 
-  Zap, 
-  Lock, 
-  CheckCircle2, 
-  AlertTriangle, 
-  Activity, 
-  ChevronDown, 
-  ArrowRight, 
-  Radio, 
-  Layers, 
-  Sun, 
-  Moon, 
-  Key, 
-  FileText, 
+import {
+  Shield,
+  Server,
+  Cpu,
+  Terminal,
+  Zap,
+  Lock,
+  CheckCircle2,
+  AlertTriangle,
+  Activity,
+  ChevronDown,
+  ArrowRight,
+  Radio,
+  Layers,
+  Sun,
+  Moon,
+  Key,
+  FileText,
   Globe
 } from "lucide-react";
 import { Typewriter } from "@/components/ui/Typewriter";
@@ -179,8 +179,8 @@ export default function LandingPage({ onNavigateToLogin }: LandingPageProps) {
             <button
               onClick={toggleTheme}
               className={`p-2.5 rounded-xl border transition-all ${
-                isLight 
-                  ? "border-slate-200 text-slate-600 hover:bg-slate-100" 
+                isLight
+                  ? "border-slate-200 text-slate-600 hover:bg-slate-100"
                   : "border-slate-800 text-slate-400 hover:bg-slate-900 hover:text-white"
               }`}
               title="Toggle theme"
@@ -211,7 +211,8 @@ export default function LandingPage({ onNavigateToLogin }: LandingPageProps) {
               Agentless
             </span>
             <span className={isLight ? "text-slate-600" : "text-slate-300"}>
-              <Typewriter 
+              Agentless Cloud Monitoring & Fleet Management
+              {/* <Typewriter
                 text={[
                   "Agentless Cloud Monitoring & Fleet Management",
                   "SSH & ICMP Telemetry Without Daemons",
@@ -221,11 +222,11 @@ export default function LandingPage({ onNavigateToLogin }: LandingPageProps) {
                 speed={40}
                 waitTime={2500}
                 className="font-medium"
-              />
+              /> */}
             </span>
           </motion.div>
 
-          <motion.h1 
+          <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
@@ -236,7 +237,7 @@ export default function LandingPage({ onNavigateToLogin }: LandingPageProps) {
             Unified Cloud Observability Without Target Server Agents
           </motion.h1>
 
-          <motion.p 
+          <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
@@ -247,7 +248,7 @@ export default function LandingPage({ onNavigateToLogin }: LandingPageProps) {
             Monitor server availability, ICMP latency, CPU and memory utilization, and Docker microservice statuses using native SSH and ICMP protocols.
           </motion.p>
 
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.3 }}
@@ -372,7 +373,7 @@ export default function LandingPage({ onNavigateToLogin }: LandingPageProps) {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {problems.map((prob, idx) => (
-              <div 
+              <div
                 key={idx}
                 className={`p-8 border rounded-3xl transition-all ${
                   isLight ? "bg-slate-50 border-slate-200" : "bg-slate-950/60 border-slate-800/80"
@@ -415,11 +416,11 @@ export default function LandingPage({ onNavigateToLogin }: LandingPageProps) {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {solutions.map((sol, idx) => (
-              <div 
+              <div
                 key={idx}
                 className={`p-8 border rounded-3xl transition-all ${
-                  isLight 
-                    ? "bg-white border-slate-200 shadow-sm" 
+                  isLight
+                    ? "bg-white border-slate-200 shadow-sm"
                     : "bg-slate-900/60 border-slate-800/80 backdrop-blur-md"
                 }`}
               >
@@ -454,7 +455,7 @@ export default function LandingPage({ onNavigateToLogin }: LandingPageProps) {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {workflowSteps.map((step, idx) => (
-              <div 
+              <div
                 key={idx}
                 className={`p-6 border rounded-2xl relative ${
                   isLight ? "bg-white border-slate-200 shadow-xs" : "bg-slate-950 border-slate-800"
@@ -495,7 +496,7 @@ export default function LandingPage({ onNavigateToLogin }: LandingPageProps) {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {securityFeatures.map((sec, idx) => (
-              <div 
+              <div
                 key={idx}
                 className={`p-8 border rounded-3xl flex items-start gap-5 ${
                   isLight ? "bg-white border-slate-200 shadow-sm" : "bg-slate-900/60 border-slate-800/80"
@@ -536,7 +537,7 @@ export default function LandingPage({ onNavigateToLogin }: LandingPageProps) {
             {faqs.map((faq, idx) => {
               const isOpen = openFaq === idx;
               return (
-                <div 
+                <div
                   key={idx}
                   className={`border rounded-2xl overflow-hidden transition-all ${
                     isLight ? "bg-slate-50 border-slate-200" : "bg-slate-950 border-slate-800"
@@ -565,8 +566,8 @@ export default function LandingPage({ onNavigateToLogin }: LandingPageProps) {
       <section className="py-20 relative overflow-hidden">
         <div className="max-w-5xl mx-auto px-6 text-center">
           <div className={`p-12 border rounded-3xl relative overflow-hidden shadow-2xl ${
-            isLight 
-              ? "bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 text-white border-blue-500" 
+            isLight
+              ? "bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 text-white border-blue-500"
               : "bg-gradient-to-tr from-blue-950/80 via-slate-900 to-indigo-950/80 border-slate-800"
           }`}>
             <h3 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-white mb-6">

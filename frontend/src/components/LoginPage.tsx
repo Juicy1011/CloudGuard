@@ -73,7 +73,11 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
 
     try {
       if (mode === 'signup') {
-        const user = await registerUser(username || email.split('@')[0], email, password);
+        const trimmedUsername = username.trim();
+        if (/\d/.test(trimmedUsername)) {
+          throw new Error("Username must contain letters only (no numbers allowed).");
+        }
+        const user = await registerUser(trimmedUsername || email.split('@')[0], email, password);
         onLoginSuccess({ id: user.id, username: user.username, email: user.email, access_token: user.access_token, is_protected: user.is_protected, password: password }, rememberMe);
       } else if (mode === 'login') {
         const user = await loginUser(email, password);
